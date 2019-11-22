@@ -12,31 +12,32 @@ public class Board {
         return BOARD_HEIGHT;
     }
 
+    /**
+     * Generates the game board which appears as staggered columns of cells to mimic
+     * a hexagonal cell structure.
+     * @return a staggered board of EmptyCell objects with appropriate row and column values
+     */
     public Cell[][] generateBoard() {
 
-        int cellNumberCounter = 0;
         board = new Cell[BOARD_HEIGHT][BOARD_WIDTH];
+        for (int colIndex = 0; colIndex < BOARD_WIDTH; colIndex++) {
 
-        for (int col = 0; col < BOARD_WIDTH; col++) {
+            for (int rowIndex = 0; rowIndex < BOARD_HEIGHT; rowIndex++) {
 
-            for (int row = 0; row < BOARD_HEIGHT; row++) {
-
-                if (col % 2 == 0) {
-                    if (row == 0) {
-                        board[row][col] = null;
+                if (colIndex % 2 == 0) {
+                    if (rowIndex == 0) {
+                        board[rowIndex][colIndex] = null;
                     } else {
-                        board[row][col] = new Cell.EmptyCell(cellNumberCounter++);
+                        board[rowIndex][colIndex] = new Cell.EmptyCell(rowIndex, colIndex);
                     }
 
-                } else {
-                    if (row == BOARD_HEIGHT - 1) {
-                        board[row][col] = null;
+                } else if (rowIndex == BOARD_HEIGHT - 1) {
+                        board[rowIndex][colIndex] = null;
                     } else {
-                        board[row][col] = new Cell.EmptyCell(cellNumberCounter++);
+                        board[rowIndex][colIndex] = new Cell.EmptyCell(rowIndex, colIndex);
                     }
                 }
             }
-        }
 
         return board;
     }
@@ -44,8 +45,6 @@ public class Board {
     public Cell[][] getBoard() {
         return board;
     }
-
-
 
     public Board(int BOARD_WIDTH, int BOARD_HEIGHT) {
         this.BOARD_WIDTH = BOARD_WIDTH;
@@ -64,13 +63,14 @@ public class Board {
 class Main {
     public static void main(String[] args) {
 
-        Board board = new Board(1, 1);
+        Board board = new Board(8, 8);
 
-        for(int i = 0; i < board.getBOARD_WIDTH(); i++)
-        {
-            for(int j = 0; j < board.getBOARD_HEIGHT(); j++)
-            {
+        for(int i = 0; i < board.getBOARD_WIDTH(); i++) {
+
+            for(int j = 0; j < board.getBOARD_HEIGHT(); j++) {
+
                 System.out.print(board.generateBoard()[i][j]);
+
             }
             System.out.println();
         }

@@ -1,46 +1,29 @@
-import com.sun.xml.internal.bind.v2.TODO;
-
-import java.util.HashMap;
-import java.util.Map;
-
 public abstract class Cell {
 
-    private final int cellNumber;
-    
-    /*private static final Map<Integer, EmptyCell> EMPTY_CELLS = generateEmptyCells();
+    private final int row, column;
 
-    private static Map<Integer, EmptyCell> generateEmptyCells() {
-
-        final Map<Integer, EmptyCell> emptyCellMap = new HashMap<>();
-
-        for(int i = 0; i < 64; i++) {
-            emptyCellMap.put(i, new EmptyCell(i));
-        }
-
-        return emptyCellMap;
-
-    }
-
-    public static Cell createCell(final int cellNumber, final Piece piece) {
-        if(piece != null) {
-            return new OccupiedCell(cellNumber, piece);
-        } else {
-            return EMPTY_CELLS.get(cellNumber);
-        }
-    }*/
-
-    public Cell(final int cellNumber) {
-        this.cellNumber = cellNumber;
+    public Cell(int row, int column) {
+        this.row = row;
+        this.column = column;
     }
 
     public abstract boolean isOccupied();
 
     public abstract Piece getPiece();
 
+    public int getRow() {
+        return row;
+    }
+
+    public int getColumn() {
+        return column;
+    }
+
+
     public static final class EmptyCell extends Cell {
 
-        public EmptyCell(final int cellNumber) {
-            super(cellNumber);
+        public EmptyCell(final int row, final int column) {
+            super(row, column);
         }
 
         @Override
@@ -56,7 +39,7 @@ public abstract class Cell {
         //TODO
         @Override
         public String toString() {
-            return "[  ]";
+            return getRow() + "," + getColumn() + " "  ;
         }
 
     }
@@ -65,8 +48,8 @@ public abstract class Cell {
 
         private final Piece piece;
 
-        public OccupiedCell(final int cellNumber, final Piece piece) {
-            super(cellNumber);
+        public OccupiedCell(final int row, final int column, final Piece piece) {
+            super(row, column);
             this.piece = piece;
         }
 
