@@ -5,7 +5,7 @@ public class Piece {
     private int row, column;
     private final Team team;
 
-    public Piece(int position, int row, int column, Team team) {
+    public Piece(int row, int column, Team team) {
         this.row = row;
         this.column = column;
         this.team = team;
