@@ -1,10 +1,10 @@
 public abstract class Cell {
 
-    private final int row, column;
+    private final int row, col;
 
-    public Cell(int row, int column) {
+    public Cell(int row, int col) {
         this.row = row;
-        this.column = column;
+        this.col = col;
     }
 
     public abstract boolean isOccupied();
@@ -15,15 +15,14 @@ public abstract class Cell {
         return row;
     }
 
-    public int getColumn() {
-        return column;
+    public int getCol() {
+        return col;
     }
-
 
     public static final class EmptyCell extends Cell {
 
-        public EmptyCell(final int row, final int column) {
-            super(row, column);
+        public EmptyCell(final int row, final int col) {
+            super(row, col);
         }
 
         @Override
@@ -37,9 +36,13 @@ public abstract class Cell {
         }
 
         //TODO
+        /*@Override
+        public String toString() {
+            return "[" + getRow() + "," + getCol() + "]";
+        }*/
         @Override
         public String toString() {
-            return getRow() + "," + getColumn() + " "  ;
+            return "[ ]";
         }
 
     }
@@ -48,8 +51,8 @@ public abstract class Cell {
 
         private final Piece piece;
 
-        public OccupiedCell(final int row, final int column, final Piece piece) {
-            super(row, column);
+        public OccupiedCell(final int row, final int col, final Piece piece) {
+            super(row, col);
             this.piece = piece;
         }
 
@@ -61,6 +64,11 @@ public abstract class Cell {
         @Override
         public Piece getPiece() {
             return this.piece;
+        }
+
+        @Override
+        public String toString() {
+            return "[X]";
         }
 
     }

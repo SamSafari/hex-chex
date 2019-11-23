@@ -1,14 +1,14 @@
 public class Board {
 
-    private Cell[][] board = generateBoard();
+    private Cell[][] board;
     private final int BOARD_WIDTH;
     private final int BOARD_HEIGHT;
 
-    public int getBOARD_WIDTH() {
+    public int BOARD_WIDTH() {
         return BOARD_WIDTH;
     }
 
-    public int getBOARD_HEIGHT() {
+    public int BOARD_HEIGHT() {
         return BOARD_HEIGHT;
     }
 
@@ -20,21 +20,21 @@ public class Board {
     public Cell[][] generateBoard() {
 
         board = new Cell[BOARD_HEIGHT][BOARD_WIDTH];
-        for (int colIndex = 0; colIndex < BOARD_WIDTH; colIndex++) {
 
-            for (int rowIndex = 0; rowIndex < BOARD_HEIGHT; rowIndex++) {
+        for (int row = 0; row < board.length; row++) {
+            for (int col = 0; col < board[row].length; col++) {
 
-                if (colIndex % 2 == 0) {
-                    if (rowIndex == 0) {
-                        board[rowIndex][colIndex] = null;
+                if (col % 2 == 0) {
+                    if (row == 0) {
+                        board[row][col] = null;
                     } else {
-                        board[rowIndex][colIndex] = new Cell.EmptyCell(rowIndex, colIndex);
+                        board[row][col] = new Cell.EmptyCell(row, col);
                     }
 
-                } else if (rowIndex == BOARD_HEIGHT - 1) {
-                        board[rowIndex][colIndex] = null;
+                } else if (row == BOARD_HEIGHT - 1) {
+                        board[row][col] = null;
                     } else {
-                        board[rowIndex][colIndex] = new Cell.EmptyCell(rowIndex, colIndex);
+                        board[row][col] = new Cell.EmptyCell(row, col);
                     }
                 }
             }
@@ -42,20 +42,38 @@ public class Board {
         return board;
     }
 
-    public Cell[][] getBoard() {
-        return board;
-    }
-
     public Board(int BOARD_WIDTH, int BOARD_HEIGHT) {
         this.BOARD_WIDTH = BOARD_WIDTH;
         this.BOARD_HEIGHT = BOARD_HEIGHT;
+        board = generateBoard();
     }
 
     public Board() {
         this(8, 8);
+        board = generateBoard();
     }
 
+    public Cell[][] getBoard() {
+        return board;
+    }
 
+    @Override
+    public String toString() {
+        String output = "";
+        for (int row = 0; row < board.length; row++) {
+            for (int col = 0; col < board[row].length; col++) {
+
+                if (board[row][col] == null) {
+                    output += "   ";
+                } else {
+                    output += board[row][col];
+                }
+
+            }
+            output += "\n";
+        }
+        return output;
+    }
 
 
 }
@@ -65,11 +83,15 @@ class Main {
 
         Board board = new Board(8, 8);
 
-        for(int i = 0; i < board.getBOARD_WIDTH(); i++) {
+        for (int i = 0; i < board.BOARD_WIDTH(); i++) {
 
-            for(int j = 0; j < board.getBOARD_HEIGHT(); j++) {
+            for (int j = 0; j < board.BOARD_HEIGHT(); j++) {
 
-                System.out.print(board.generateBoard()[i][j]);
+                if (board.getBoard()[i][j] == null) {
+                    System.out.print("     ");
+                } else {
+                    System.out.print(board.getBoard()[i][j]);
+                }
 
             }
             System.out.println();
