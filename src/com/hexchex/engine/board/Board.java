@@ -9,6 +9,7 @@ public class Board {
     private Cell[][] board;
     private final int BOARD_WIDTH;
     private final int BOARD_HEIGHT;
+    private final int piecesPerTeam;
 
     public int BOARD_WIDTH() {
         return BOARD_WIDTH;
@@ -48,19 +49,28 @@ public class Board {
         return board;
     }
 
-    public Board(int width, int height) {
+    public Board(int width, int height, int piecesPerTeam) {
         this.BOARD_WIDTH = width;
         this.BOARD_HEIGHT = height;
+        this.piecesPerTeam = piecesPerTeam;
         board = generateBoard();
     }
 
     public Board() {
-        this(8, 8);
+        this(8, 8, 8);
         board = generateBoard();
     }
 
     public Cell[][] getBoard() {
         return board;
+    }
+
+    public int getNumTiles() {
+        int numTiles = 0;
+        for(int i = 0; i < board.length; i++) {
+            numTiles += board[i].length;
+        }
+        return numTiles;
     }
 
     public Cell findCell(Cell other) throws IllegalMoveException {
@@ -79,38 +89,39 @@ public class Board {
         }
     }
 
+    public void addPiece(int row, int col, Piece piece) {
+        if (board[row][col].isOccupied()) {
+            board[row][col].getPiece().getTeam().removePiece(board[row][col].getPiece());
+        }
+
+        board[row][col] = new Cell.OccupiedCell(row, col, piece);
+        piece.getTeam().addPiece(piece);
+    }
+
 
     public void setupDefaultBoard(Team team1, Team team2) {
 
         for (int col = 0; col < BOARD_WIDTH; col++) {
             if (col % 2 != 0) {
-                Piece piece = new Piece(0, col, team1, this);
-                board[0][col] = piece.getPosition();
-                team1.addPiece(piece);
+                addPiece(0, col, new Piece(0, col, team1, this));
             }
         }
 
         for (int col = 0; col < BOARD_WIDTH; col++) {
             if (col % 2 == 0) {
-                Piece piece = new Piece(1, col, team1, this);
-                board[1][col] = piece.getPosition();
-                team1.addPiece(piece);
+                addPiece(1, col, new Piece(1, col, team1, this));
             }
         }
 
         for (int col = 0; col < BOARD_WIDTH; col++) {
             if (col % 2 == 0) {
-                Piece piece = new Piece(BOARD_HEIGHT - 1, col, team2, this);
-                board[BOARD_HEIGHT - 1][col] = piece.getPosition();
-                team2.addPiece(piece);
+                addPiece(BOARD_HEIGHT - 1, col, new Piece(BOARD_HEIGHT - 1, col, team2, this));
             }
         }
 
         for (int col = 0; col < BOARD_WIDTH; col++) {
             if (col % 2 != 0) {
-                Piece piece = new Piece(BOARD_HEIGHT - 2, col, team2, this);
-                board[BOARD_HEIGHT - 2][col] = piece.getPosition();
-                team2.addPiece(piece);
+                addPiece(BOARD_HEIGHT - 2, col, new Piece(BOARD_HEIGHT - 2, col, team2, this));
             }
         }
 

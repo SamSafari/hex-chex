@@ -1,6 +1,5 @@
 package com.hexchex.engine.pieces;
 
-import com.hexchex.engine.board.Cell;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
