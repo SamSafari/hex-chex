@@ -26,21 +26,25 @@ public class Game {
 
     public Game(Board board) {
         this.board = board;
-        this.gameFrame = new JFrame("HexChex");
-        this.gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        this.gameFrame.setSize(new Dimension(this.board.BOARD_WIDTH()*100,
-                                            this.board.BOARD_HEIGHT()*100));
+
+        gameFrame = new JFrame("HexChex");
+        gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        gameFrame.setSize(new Dimension(board.BOARD_WIDTH() * 100,
+                board.BOARD_HEIGHT() * 105));
 
         final JMenuBar gameMenuBar = createGameMenuBar();
-        this.gameFrame.setJMenuBar(gameMenuBar);
+        gameFrame.setJMenuBar(gameMenuBar);
 
-        this.hexPanel = new HexPanel();
+        hexPanel = new HexPanel();
         HexSelector selector = new HexSelector(hexPanel);
         hexPanel.addMouseListener(selector);
 
-        this.gameFrame.add(this.hexPanel);
+        gameFrame.add(hexPanel);
+        hexPanel.setLocation(500, 500);
+        hexPanel.setPreferredSize(gameFrame.getSize());
 
-        this.gameFrame.setVisible(true);
+
+        gameFrame.setVisible(true);
     }
 
     private JMenuBar createGameMenuBar() {
@@ -83,7 +87,7 @@ public class Game {
     }
 
 
-    private class HexPanel extends JPanel {
+    private class HexPanel extends JPanel implements MouseListener {
 
         ArrayList<Hexagon> hexList = new ArrayList<>();
 
@@ -95,11 +99,11 @@ public class Game {
         public void paintComponent(Graphics g) {
 
             super.paintComponent(g);
-            this.setBackground(Color.LIGHT_GRAY);
+            setBackground(Color.LIGHT_GRAY);
             int radius = 50;
 
-            for (int row = 0; row < board.BOARD_HEIGHT(); row++) {
-                for (int col = 0; col < board.BOARD_WIDTH(); col++) {
+            for(int row = 0; row < board.BOARD_HEIGHT(); row++) {
+                for(int col = 0; col < board.BOARD_WIDTH(); col++) {
 
                     if (col % 2 == 0) {
                         if (row == 0) {
@@ -107,20 +111,23 @@ public class Game {
                         } else {
 
                             if (row % 2 == 0) {
-                                g.setColor(Color.blue);
+                                g.setColor(new Color(200, 150, 100));
                             } else {
-                                g.setColor(new Color(0, 50, 100));
+                                g.setColor(new Color(100, 70, 30));
                             }
-                            Point hexCenter = new Point(col * 80 + radius, row * 90 - 45 + radius);
+                            //Point hexCenter = new Point(col * 80 + radius, row * 90 - 45 + radius);
+
+                            Point hexCenter = new Point(col * 80 + 2*radius, row * 90 - 45 + 2*radius);
+
                             Hexagon hex = new Hexagon(hexCenter, radius, board.getBoard()[row][col]);
 
                             g.fillPolygon(hex);
                             hexList.add(hex);
 
-                            if(hex.getCell().isOccupied()) {
+                            if (hex.getCell().isOccupied()) {
                                 Color color = hex.getCell().getPiece().getTeam().getColor();
                                 g.setColor(color);
-                                g.fillOval(hexCenter.x-(radius/2), hexCenter.y-(radius/2), radius, radius);
+                                g.fillOval(hexCenter.x - (radius / 2), hexCenter.y - (radius / 2), radius, radius);
                             }
 
                         }
@@ -129,20 +136,23 @@ public class Game {
 
                     } else {
                         if (row % 2 == 0) {
-                            g.setColor(Color.ORANGE);
+                            g.setColor(new Color(150, 100, 50));
                         } else {
-                            g.setColor(new Color(200, 150, 0));
+                            g.setColor(new Color(75, 50, 30));
                         }
-                        Point hexCenter = new Point(col * 80 + radius, row * 90 + radius);
+                        //Point hexCenter = new Point(col * 80 + radius, row * 90 + radius);
+
+                        Point hexCenter = new Point(col * 80 + 2*radius, row * 90 + 2*radius);
+
                         Hexagon hex = new Hexagon(hexCenter, radius, board.getBoard()[row][col]);
 
                         g.fillPolygon(hex);
                         hexList.add(hex);
 
-                        if(hex.getCell().isOccupied()) {
+                        if (hex.getCell().isOccupied()) {
                             Color color = hex.getCell().getPiece().getTeam().getColor();
                             g.setColor(color);
-                            g.fillOval(hexCenter.x-(radius/2), hexCenter.y-(radius/2), radius, radius);
+                            g.fillOval(hexCenter.x - (radius / 2), hexCenter.y - (radius / 2), radius, radius);
                         }
 
                     }
@@ -150,9 +160,37 @@ public class Game {
             }
 
 
+        }
+
+        @Override
+        public void mouseClicked(MouseEvent e) {
+            if (isRightMouseButton(e)) {
+                sourceHex = null;
+                destinationHex = null;
+                pieceToMove = null;
+                System.out.println("Cancelled");
+            }
+        }
+
+        @Override
+        public void mousePressed(MouseEvent e) {
 
         }
 
+        @Override
+        public void mouseReleased(MouseEvent e) {
+
+        }
+
+        @Override
+        public void mouseEntered(MouseEvent e) {
+
+        }
+
+        @Override
+        public void mouseExited(MouseEvent e) {
+
+        }
     }
 
     class HexSelector implements MouseListener {
@@ -166,28 +204,30 @@ public class Game {
         /**
          * Moves the piece on a selected Hexagon (LClick 1) to another selected Hexagon (LClick 2),
          * or cancels all selections (RClick). Will update the graphical representation of the board when complete.
+         *
          * @param e User mouse click input
          */
         @Override
         public void mouseClicked(MouseEvent e) {
             Point p = e.getPoint();
             ArrayList<Hexagon> hexes = hexPanel.hexList;
-            for(int i = 0; i < hexes.size(); i++) {
-                if(hexes.get(i).contains(p)) {
+            for (int i = 0; i < hexes.size(); i++) {
 
-                    if(isRightMouseButton(e)) {
+                if (hexes.get(i).contains(p)) {
+
+                    if (isRightMouseButton(e)) {
 
                         sourceHex = null;
                         destinationHex = null;
                         pieceToMove = null;
-                        System.out.println("Canceled");
+                        System.out.println("Cancelled");
 
-                    } else if(isLeftMouseButton(e)) {
+                    } else if (isLeftMouseButton(e)) {
 
-                        if(sourceHex == null) {
+                        if (sourceHex == null) {
                             sourceHex = hexes.get(i);
 
-                            if(hexes.get(i).getCell().isOccupied()) {
+                            if (hexes.get(i).getCell().isOccupied()) {
                                 pieceToMove = sourceHex.getCell().getPiece();
                                 System.out.println("Source selected");
                             } else {
@@ -196,11 +236,13 @@ public class Game {
                             }
 
                         } else {
+
                             destinationHex = hexes.get(i);
                             destinationHex.setColor(Color.GREEN);
+                            hexPanel.repaint();
                             System.out.println("Destination selected");
 
-                            if(pieceToMove.validateMove(sourceHex.getCell(), destinationHex.getCell())) {
+                            if (pieceToMove.validateMove(sourceHex.getCell(), destinationHex.getCell())) {
 
                                 pieceToMove.executeMove(sourceHex.getCell(), destinationHex.getCell());
 
@@ -214,7 +256,6 @@ public class Game {
                                 System.out.println("Move successful");
 
                             }
-
 
                         }
                     }
