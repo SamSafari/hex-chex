@@ -17,7 +17,7 @@ public class Piece {
     }
 
     public Piece(int row, int col, Team team, Board board) {
-        this.position = new Cell.OccupiedCell(row, col, this);
+        this.position = board.getBoard()[row][col];
         this.team = team;
         this.board = board;
     }
@@ -56,7 +56,7 @@ public class Piece {
      * @throws IllegalMoveException if the Cell in the specified direction is an invalid place to move (i.e. it is off
      *                              the board or occupied by a piece of the same team)
      */
-    public void move(Direction d) throws IllegalMoveException {
+    public Cell move(Direction d) throws IllegalMoveException {
 
         Cell startCell = board.findCell(position);
         Cell endCell = board.findCell(d.findNewCell(startCell));
@@ -84,6 +84,7 @@ public class Piece {
             }
         }
 
+        return endCell;
     }
 
     /**
@@ -93,16 +94,57 @@ public class Piece {
      * @param endCell the new cell the piece is moving to (will be converted to an OccupiedCell regardless of whether
      *                it was before)
      */
-    private void executeMove(Cell startCell, Cell endCell) {
+    public void executeMove(Cell startCell, Cell endCell) {
 
+        int oldCellID = position.getCellID();
         setPosition(endCell);
 
-        startCell = new Cell.EmptyCell(startCell.row(), startCell.col());
-        endCell = new Cell.OccupiedCell(endCell.row(), endCell.col(), this);
+        startCell = new Cell.EmptyCell(startCell.row(), startCell.col(), oldCellID);
+        endCell = new Cell.OccupiedCell(endCell.row(), endCell.col(), position.getCellID(),this);
 
         board.getBoard()[startCell.row()][startCell.col()] = startCell;
         board.getBoard()[endCell.row()][endCell.col()] = endCell;
 
     }
 
+    /**
+     * Checks whether a move between any two (possibly non-adjacent) cells is legal.
+     * @param startCell cell moving from
+     * @param endCell cell moving to
+     * @return true if the move is legal, IllegalMoveException() otherwise
+     */
+    public boolean validateMove(Cell startCell, Cell endCell) {
+
+        int numValidDirections = 0;
+        for (Direction d : Direction.values()) {
+            if (endCell.row() == d.findNewCell(startCell).row()
+            && endCell.col() == d.findNewCell(startCell).col()) {
+                numValidDirections++;
+            }
+        }
+        if(numValidDirections > 0) {
+            return true;
+        }
+
+        if (board.getBoard()[endCell.row()][endCell.col()] == null) {
+
+            throw new IllegalMoveException("You cannot move that direction!");
+
+        } else if (!endCell.isOccupied()) {
+
+            return true;
+
+        } else if (endCell.getPiece().getTeam() == team) {
+
+                throw new IllegalMoveException("You cannot move to a cell occupied by one of your pieces!");
+
+        }
+
+        return true;
+
+    }
+
+
 }
+
+

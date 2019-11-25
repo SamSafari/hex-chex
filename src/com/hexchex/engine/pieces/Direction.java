@@ -14,7 +14,7 @@ public enum Direction {
     }
 
     public Cell findNewCell(Cell startCell) {
-        return new Cell.EmptyCell(startCell.row() + row, startCell.col() + col);
+        return new Cell.EmptyCell(startCell.row() + row, startCell.col() + col, -1);
     }
 
 }

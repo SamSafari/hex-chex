@@ -9,7 +9,6 @@ public class Board {
     private Cell[][] board;
     private final int BOARD_WIDTH;
     private final int BOARD_HEIGHT;
-    private final int piecesPerTeam;
 
     public int BOARD_WIDTH() {
         return BOARD_WIDTH;
@@ -27,6 +26,7 @@ public class Board {
     public Cell[][] generateBoard() {
 
         board = new Cell[BOARD_HEIGHT][BOARD_WIDTH];
+        int cellIDCounter = 0;
 
         for (int row = 0; row < board.length; row++) {
             for (int col = 0; col < board[row].length; col++) {
@@ -35,13 +35,13 @@ public class Board {
                     if (row == 0) {
                         board[row][col] = null;
                     } else {
-                        board[row][col] = new Cell.EmptyCell(row, col);
+                        board[row][col] = new Cell.EmptyCell(row, col, cellIDCounter++);
                     }
 
                 } else if (row == BOARD_HEIGHT - 1) {
                         board[row][col] = null;
                     } else {
-                        board[row][col] = new Cell.EmptyCell(row, col);
+                        board[row][col] = new Cell.EmptyCell(row, col, cellIDCounter++);
                     }
                 }
             }
@@ -49,15 +49,14 @@ public class Board {
         return board;
     }
 
-    public Board(int width, int height, int piecesPerTeam) {
+    public Board(int width, int height) {
         this.BOARD_WIDTH = width;
         this.BOARD_HEIGHT = height;
-        this.piecesPerTeam = piecesPerTeam;
         board = generateBoard();
     }
 
     public Board() {
-        this(8, 8, 8);
+        this(8, 8);
         board = generateBoard();
     }
 
@@ -94,7 +93,7 @@ public class Board {
             board[row][col].getPiece().getTeam().removePiece(board[row][col].getPiece());
         }
 
-        board[row][col] = new Cell.OccupiedCell(row, col, piece);
+        board[row][col] = new Cell.OccupiedCell(row, col, board[row][col].getCellID(), piece);
         piece.getTeam().addPiece(piece);
     }
 
