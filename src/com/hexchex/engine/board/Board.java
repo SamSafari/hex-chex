@@ -25,26 +25,30 @@ public class Board {
      */
     public Cell[][] generateBoard() {
 
-        board = new Cell[BOARD_HEIGHT][BOARD_WIDTH];
+        board = new Cell[BOARD_HEIGHT * 2][BOARD_WIDTH];
         int cellIDCounter = 0;
 
-        for (int row = 0; row < board.length; row++) {
-            for (int col = 0; col < board[row].length; col++) {
+        for(int row = 0; row < board.length; row++) {
+            for(int col = 0; col < board[row].length; col++) {
 
                 if (col % 2 == 0) {
-                    if (row == 0) {
-                        board[row][col] = null;
-                    } else {
+                    if (row % 2 == 0) {
                         board[row][col] = new Cell.EmptyCell(row, col, cellIDCounter++);
+                    } else {
+                        board[row][col] = null;
                     }
 
-                } else if (row == BOARD_HEIGHT - 1) {
-                        board[row][col] = null;
-                    } else {
+                } else {
+                    if (row % 2 != 0) {
                         board[row][col] = new Cell.EmptyCell(row, col, cellIDCounter++);
+                    } else {
+                        board[row][col] = null;
                     }
+
                 }
             }
+
+        }
 
         return board;
     }
@@ -64,14 +68,6 @@ public class Board {
         return board;
     }
 
-    public int getNumTiles() {
-        int numTiles = 0;
-        for(int i = 0; i < board.length; i++) {
-            numTiles += board[i].length;
-        }
-        return numTiles;
-    }
-
     public Cell findCell(Cell other) throws IllegalMoveException {
         try {
             return board[other.row()][other.col()];
@@ -80,47 +76,43 @@ public class Board {
         }
     }
 
-    public void replaceCell(Cell other) throws IllegalMoveException {
-        try {
-            board[other.row()][other.col()] = other;
-        } catch(NullPointerException e) {
-            throw new IllegalMoveException("That cell doesn't exist!");
+    private void addPiece(int row, int col, Piece piece) {
+
+        if (board[row][col] != null) {
+
+            if (board[row][col].isOccupied()) {
+                board[row][col].getPiece().getTeam().removePiece(board[row][col].getPiece());
+            }
+
+            board[row][col] = new Cell.OccupiedCell(row, col, board[row][col].getCellID(), piece);
+            piece.getTeam().addPiece(piece);
         }
+
     }
-
-    public void addPiece(int row, int col, Piece piece) {
-        if (board[row][col].isOccupied()) {
-            board[row][col].getPiece().getTeam().removePiece(board[row][col].getPiece());
-        }
-
-        board[row][col] = new Cell.OccupiedCell(row, col, board[row][col].getCellID(), piece);
-        piece.getTeam().addPiece(piece);
-    }
-
 
     public void setupDefaultBoard(Team team1, Team team2) {
 
         for (int col = 0; col < BOARD_WIDTH; col++) {
-            if (col % 2 != 0) {
+            if (board[0][col] != null) {
                 addPiece(0, col, new Piece(0, col, team1, this));
             }
         }
 
         for (int col = 0; col < BOARD_WIDTH; col++) {
-            if (col % 2 == 0) {
+            if (board[1][col] != null) {
                 addPiece(1, col, new Piece(1, col, team1, this));
             }
         }
 
         for (int col = 0; col < BOARD_WIDTH; col++) {
-            if (col % 2 == 0) {
-                addPiece(BOARD_HEIGHT - 1, col, new Piece(BOARD_HEIGHT - 1, col, team2, this));
+            if (board[BOARD_HEIGHT*2-1][col] != null) {
+                addPiece(BOARD_HEIGHT * 2 - 1, col, new Piece(BOARD_HEIGHT * 2 - 1, col, team2, this));
             }
         }
 
         for (int col = 0; col < BOARD_WIDTH; col++) {
-            if (col % 2 != 0) {
-                addPiece(BOARD_HEIGHT - 2, col, new Piece(BOARD_HEIGHT - 2, col, team2, this));
+            if (board[BOARD_HEIGHT * 2 - 2][col] != null) {
+                addPiece(BOARD_HEIGHT * 2 - 2, col, new Piece(BOARD_HEIGHT * 2 - 2, col, team2, this));
             }
         }
 

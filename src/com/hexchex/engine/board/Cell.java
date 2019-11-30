@@ -50,11 +50,6 @@ public abstract class Cell {
             return null;
         }
 
-        //TODO
-        /*@Override
-        public String toString() {
-            return "[" + getRow() + "," + getCol() + "]";
-        }*/
         @Override
         public String toString() {
             return "[ ]";

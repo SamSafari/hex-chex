@@ -4,7 +4,7 @@ import com.hexchex.engine.board.*;
 
 public enum Direction {
 
-    N(-1, 0), S(1, 0), NW(-1, -1), NE(-1, 1), SW(1, -1), SE(1, 1);
+    N(-2, 0), S(2, 0), NW(-1, -1), NE(-1, 1), SW(1, -1), SE(1, 1);
 
     private int row, col;
 
