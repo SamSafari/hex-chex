@@ -7,9 +7,12 @@ import com.hexchex.engine.pieces.Piece;
 import com.hexchex.engine.pieces.Team;
 
 import javax.swing.*;
+import javax.swing.text.MaskFormatter;
+import javax.swing.text.NumberFormatter;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 
 import static javax.swing.SwingUtilities.*;
@@ -50,7 +53,7 @@ public class Game implements Serializable {
         messagePanel.add(currentMessageDisplay);
 
         hexPanel.addMouseListener(selector);
-        hexPanel.addMouseListener(new MouseListener() {
+        hexPanel.addMouseListener(new MouseAdapter() {
 
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -60,26 +63,6 @@ public class Game implements Serializable {
                     pieceToMove = null;
                     System.out.println("Cancelled");
                 }
-            }
-
-            @Override
-            public void mousePressed(MouseEvent e) {
-
-            }
-
-            @Override
-            public void mouseReleased(MouseEvent e) {
-
-            }
-
-            @Override
-            public void mouseEntered(MouseEvent e) {
-
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-
             }
 
         });
@@ -100,13 +83,182 @@ public class Game implements Serializable {
         return gameMenuBar;
     }
 
+    private MaskFormatter createFormatter(String s) {
+        MaskFormatter formatter = null;
+        try {
+            formatter = new MaskFormatter(s);
+        } catch (java.text.ParseException e) {
+            System.err.println("formatter is bad: " + e.getMessage());
+            System.exit(-1);
+        }
+        return formatter;
+    }
+
     private JMenu createEditMenu() {
+
         final JMenu editMenu = new JMenu("Edit");
 
         final JMenuItem resizeBoard = new JMenuItem("Resize board");
+
         resizeBoard.addActionListener(e -> {
-            HexChex hexChex = new HexChex(new Board(10, 10), team1, team2);
-            Game game = new Game(hexChex);
+
+            final int[] newWidth = new int[1];
+            final int[] newHeight = new int[1];
+            final boolean[] dimensionsValid = {false, false};
+
+
+            final JFrame resizePopout = new JFrame("Resize board");
+            final JPanel resizeInput = new JPanel();
+
+            resizePopout.setLayout(new GridBagLayout());
+            resizePopout.setSize(250, 250);
+            resizePopout.add(resizeInput);
+
+            JTextField widthField = new JTextField("width");
+            widthField.setToolTipText("width");
+
+            JTextField heightField = new JTextField("height");
+            heightField.setToolTipText("height");
+
+            JButton createBoardButton = new JButton("Create board");
+            createBoardButton.setEnabled(false);
+
+            widthField.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    if (widthField.getText().equals("")) {
+                        widthField.setText("width");
+                    }
+                    try {
+                        newWidth[0] = Integer.parseInt(widthField.getText());
+                        dimensionsValid[0] = true;
+                        if (dimensionsValid[0] && dimensionsValid[1]) {
+                            createBoardButton.setEnabled(true);
+                        }
+                        if (newWidth[0] < 5 || newWidth[0] > 100) {
+                            widthField.setText("");
+                        }
+                    } catch(NumberFormatException nfe) {
+                        widthField.setText("");
+                    }
+                }
+            });
+            widthField.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    if (widthField.getText().equals("width")) {
+                        widthField.setText("");
+                    }
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    if (widthField.getText().equals("")) {
+                        widthField.setText("width");
+                    }
+                }
+            });
+
+            heightField.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    if (heightField.getText().equals("")) {
+                        heightField.setText("height");
+                    }
+                    try {
+                        newHeight[0] = Integer.parseInt(heightField.getText());
+                        dimensionsValid[1] = true;
+                        if (dimensionsValid[0] && dimensionsValid[1]) {
+                            createBoardButton.setEnabled(true);
+                        }
+                        if (newHeight[0] < 5 || newHeight[0] > 100) {
+                            heightField.setText("");
+                        }
+                    } catch(NumberFormatException nfe) {
+                        heightField.setText("");
+                    }
+                }
+            });
+            heightField.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    if (heightField.getText().equals("height")) {
+                        heightField.setText("");
+                    }
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    if (heightField.getText().equals("")) {
+                        heightField.setText("height");
+                    }
+                }
+            });
+
+            createBoardButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+
+                    Board newBoard = new Board(newWidth[0], newHeight[0]);
+                    JFrame confirmResizeWindow = new JFrame("Confirm resize");
+                    confirmResizeWindow.setSize(500, 500);
+                    confirmResizeWindow.setLayout(new GridBagLayout());
+
+                    JButton resizeButton = new JButton("Resize");
+                    resizeButton.setBorderPainted(true);
+
+                    JButton cancelButton = new JButton("Cancel");
+                    JLabel resizeWarning = new JLabel("Resizing the board will cause all current game progress \n" +
+                            "to be lost. Continue?");
+
+                    GridBagConstraints c = new GridBagConstraints();
+                    c.fill = GridBagConstraints.PAGE_START;
+                    c.weightx = 0.5;
+                    c.gridx = 0;
+                    c.gridy = 0;
+                    confirmResizeWindow.add(resizeWarning, c);
+
+                    c.fill = GridBagConstraints.LINE_START;
+                    c.weightx = 0.5;
+                    c.gridx = 0;
+                    c.gridy = 1;
+                    confirmResizeWindow.add(resizeButton, c);
+
+                    c.fill = GridBagConstraints.LINE_END;
+                    c.weightx = 0.5;
+                    c.gridx = 1;
+                    c.gridy = 1;
+                    confirmResizeWindow.add(cancelButton, c);
+
+
+                    resizeButton.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            Game newGame = new Game(new HexChex(newBoard, team1, team2));
+                            confirmResizeWindow.dispose();
+                            resizePopout.dispose();
+                            gameFrame.dispose();
+                        }
+                    });
+
+                    cancelButton.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            confirmResizeWindow.dispose();
+                        }
+                    });
+
+                    confirmResizeWindow.setVisible(true);
+
+                }
+            });
+
+            resizeInput.add(widthField);
+            resizeInput.add(heightField);
+            resizeInput.add(createBoardButton);
+
+            resizePopout.setVisible(true);
+
         });
 
         editMenu.add(resizeBoard);
