@@ -1,11 +1,12 @@
 package com.hexchex.engine.pieces;
 
 import java.awt.*;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class Team {
+public class Team implements Serializable {
 
     private List<Piece> pieces;
     private int numPieces;
@@ -35,6 +36,10 @@ public class Team {
 
     public char getAbbr() {
         return name.charAt(0);
+    }
+
+    public String getName() {
+        return name;
     }
 
     public Color getColor() {

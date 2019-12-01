@@ -2,7 +2,9 @@ package com.hexchex.engine.pieces;
 
 import com.hexchex.engine.board.*;
 
-public class Piece {
+import java.io.Serializable;
+
+public class Piece implements Serializable {
 
     private int row, col;
     private Cell position;
@@ -84,6 +86,14 @@ public class Piece {
 
     }
 
+    public boolean move(Cell startCell, Cell endCell) {
+        if(validateMove(startCell, endCell)) {
+            executeMove(startCell, endCell);
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     /**
      * Helper method to move a piece from one cell to another and change the states of the Cell objects from
@@ -92,7 +102,7 @@ public class Piece {
      * @param endCell the new cell the piece is moving to (will be converted to an OccupiedCell regardless of whether
      *                it was before)
      */
-    public void executeMove(Cell startCell, Cell endCell) {
+    private void executeMove(Cell startCell, Cell endCell) {
 
         int oldCellID = position.getCellID();
         setPosition(endCell);
@@ -111,7 +121,7 @@ public class Piece {
      * @param endCell cell moving to
      * @return true if the move is legal, IllegalMoveException() otherwise
      */
-    public boolean validateMove(Cell startCell, Cell endCell) {
+    private boolean validateMove(Cell startCell, Cell endCell) {
 
         if (!endCell.isOccupied() || endCell.getPiece().getTeam() != team) {
 
@@ -129,10 +139,12 @@ public class Piece {
 
         } else if (board.getBoard()[endCell.row()][endCell.col()] == null) {
 
-            throw new IllegalMoveException("You cannot move that direction!");
+            System.out.print(" (Illegal)\n");
+            throw new NullCellException("You cannot move that direction!");
 
         }
 
+        System.out.print(" (Illegal)\n");
         throw new IllegalMoveException("You can only move to adjacent Hexagons!");
 
     }

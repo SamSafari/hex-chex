@@ -1,47 +1,94 @@
 package com.hexchex.gui;
 
+import com.hexchex.HexChex;
 import com.hexchex.engine.board.Board;
 import com.hexchex.engine.board.Cell;
 import com.hexchex.engine.pieces.Piece;
+import com.hexchex.engine.pieces.Team;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
+import java.awt.event.*;
+import java.io.*;
 import java.util.ArrayList;
 
-import static javax.swing.SwingUtilities.isLeftMouseButton;
-import static javax.swing.SwingUtilities.isRightMouseButton;
+import static javax.swing.SwingUtilities.*;
 
-public class Game {
+public class Game implements Serializable {
 
     private final JFrame gameFrame;
     private final HexPanel hexPanel;
+    private GameMessagePanel messagePanel;
+    private JLabel currentMessageDisplay;
 
+    private String currentMessage = "xD";
+    private Team currentMove;
     private Hexagon sourceHex, destinationHex;
     private Piece pieceToMove;
     private final Board board;
+    private final Team team1, team2;
 
-    public Game(Board board) {
-        this.board = board;
+    public Game(HexChex hexChex) {
+        board = hexChex.getBoard();
+        team1 = hexChex.getTeam1();
+        team2 = hexChex.getTeam2();
+        currentMove = team1;
 
         gameFrame = new JFrame("HexChex");
         gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         gameFrame.setSize(new Dimension(board.BOARD_WIDTH() * 100,
                 board.BOARD_HEIGHT() * 100 + 100));
+        gameFrame.setLayout(new BorderLayout());
 
         final JMenuBar gameMenuBar = createGameMenuBar();
         gameFrame.setJMenuBar(gameMenuBar);
 
         hexPanel = new HexPanel();
         HexSelector selector = new HexSelector(hexPanel);
+        GameMessagePanel messagePanel = new GameMessagePanel();
+        currentMessageDisplay  = new JLabel();
+        messagePanel.add(currentMessageDisplay);
+
         hexPanel.addMouseListener(selector);
+        hexPanel.addMouseListener(new MouseListener() {
 
-        gameFrame.add(hexPanel);
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (isRightMouseButton(e)) {
+                    sourceHex = null;
+                    destinationHex = null;
+                    pieceToMove = null;
+                    System.out.println("Cancelled");
+                }
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+
+            }
+
+        });
+
+        gameFrame.add(messagePanel, BorderLayout.PAGE_START);
+        messagePanel.setSize(gameFrame.getSize().width, 100);
+
+        gameFrame.add(hexPanel, BorderLayout.CENTER);
         hexPanel.setPreferredSize(gameFrame.getSize());
-
 
         gameFrame.setVisible(true);
     }
@@ -57,11 +104,9 @@ public class Game {
         final JMenu editMenu = new JMenu("Edit");
 
         final JMenuItem resizeBoard = new JMenuItem("Resize board");
-        resizeBoard.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                System.out.println("open!!");
-            }
+        resizeBoard.addActionListener(e -> {
+            HexChex hexChex = new HexChex(new Board(10, 10), team1, team2);
+            Game game = new Game(hexChex);
         });
 
         editMenu.add(resizeBoard);
@@ -73,14 +118,47 @@ public class Game {
         final JMenu fileMenu = new JMenu("File");
 
         final JMenuItem saveGame = new JMenuItem("Save game");
-        saveGame.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                System.out.println("open!");
+        saveGame.addActionListener(e -> {
+            try {
+                FileOutputStream fileOut = new FileOutputStream("C:\\Users\\Samer\\IdeaProjects\\CheckersGame\\src\\com\\hexchex\\saves.ser");
+                ObjectOutputStream objOut = new ObjectOutputStream(fileOut);
+                objOut.writeObject(new HexChex(board, team1, team2));
+                System.out.println("Game saved");
+            } catch(IOException ex) {
+                ex.printStackTrace();
             }
         });
 
+        final JMenuItem loadGame = new JMenuItem("Load game");
+        saveGame.addActionListener(e -> {
+            try {
+                FileInputStream fileIn = new FileInputStream("C:\\Users\\Samer\\IdeaProjects\\CheckersGame\\src\\com\\hexchex\\saves.ser");
+                ObjectInputStream objIn = new ObjectInputStream(fileIn);
+                HexChex loadedHexChex = (HexChex) objIn.readObject();
+                gameFrame.dispose();
+                Game loadedGame = new Game(loadedHexChex);
+                System.out.println("Game loaded");
+            } catch(IOException | ClassNotFoundException ex) {
+                ex.printStackTrace();
+            }
+        });
+
+        final JMenuItem deleteSaves = new JMenuItem("Delete saved games");
+        saveGame.addActionListener(e -> {
+                PrintWriter writer = null;
+                try {
+                    writer = new PrintWriter("C:\\Users\\Samer\\IdeaProjects\\CheckersGame\\src\\com\\hexchex\\saves.ser");
+                    writer.print("");
+                    writer.close();
+                } catch(FileNotFoundException ex) {
+                    ex.printStackTrace();
+                }
+
+        });
+
         fileMenu.add(saveGame);
+        fileMenu.add(loadGame);
+        fileMenu.add(deleteSaves);
 
         return fileMenu;
     }
@@ -161,7 +239,7 @@ public class Game {
 
     }
 
-    class HexSelector implements MouseListener {
+    private class HexSelector extends MouseAdapter {
 
         HexPanel hexPanel;
 
@@ -180,27 +258,29 @@ public class Game {
 
             Point p = e.getPoint();
             ArrayList<Hexagon> hexes = hexPanel.hexList;
-            for (int i = 0; i < hexes.size(); i++) {
+            for(Hexagon hex : hexes) {
 
-                if (hexes.get(i).contains(p)) {
+                if (hex.contains(p)) {
 
-                    System.out.println("(" + hexes.get(i).getCell().col() + ", " + hexes.get(i).getCell().row() + ")" );
+                    if (isMiddleMouseButton(e)) {
+                        System.out.println("(" + hex.getCell().col() + ", " + hex.getCell().row() + ")");
+                    }
 
-                    if (isRightMouseButton(e)) {
-
-                        sourceHex = null;
-                        destinationHex = null;
-                        pieceToMove = null;
-                        System.out.println("Cancelled");
-
-                    } else if (isLeftMouseButton(e)) {
+                    if (isLeftMouseButton(e)) {
 
                         if (sourceHex == null) {
-                            sourceHex = hexes.get(i);
+                            sourceHex = hex;
 
-                            if (hexes.get(i).getCell().isOccupied()) {
-                                pieceToMove = sourceHex.getCell().getPiece();
-                                System.out.println("Source selected");
+                            if (hex.getCell().isOccupied()) {
+
+                                if (hex.getCell().getPiece().getTeam() != currentMove) {
+                                    System.out.println(currentMove.getName() + "'s move.");
+                                    sourceHex = null;
+                                } else {
+                                    pieceToMove = sourceHex.getCell().getPiece();
+                                    System.out.println("Source selected");
+                                }
+
                             } else {
                                 sourceHex = null;
                                 System.out.println("No piece on cell");
@@ -208,26 +288,33 @@ public class Game {
 
                         } else {
 
-                            destinationHex = hexes.get(i);
-                            destinationHex.setColor(Color.GREEN);
+                            destinationHex = hex;
+
                             hexPanel.repaint();
                             System.out.print("\nDestination selected");
 
-                            if (pieceToMove.validateMove(sourceHex.getCell(), destinationHex.getCell())) {
-
-                                pieceToMove.executeMove(sourceHex.getCell(), destinationHex.getCell());
+                            if (pieceToMove.move(sourceHex.getCell(), destinationHex.getCell())) {
 
                                 sourceHex.setCell(new Cell.EmptyCell(sourceHex.getCell()));
                                 destinationHex.setCell(new Cell.OccupiedCell(destinationHex.getCell(), pieceToMove));
 
-                                sourceHex = null;
-                                destinationHex = null;
-
                                 System.out.print(" (Legal)\n");
                                 System.out.println(board);
-                                System.out.println("Move successful");
+                                System.out.print("Move successful\n");
+                                //messagePanel.pieceMoved(sourceHex.getCell(), destinationHex.getCell());
+
+                                if (currentMove == team1) {
+                                    currentMove = team2;
+                                } else {
+                                    currentMove = team1;
+                                }
+
+                                sourceHex = null;
+                                destinationHex = null;
+                                pieceToMove = null;
 
                             } else {
+
                                 sourceHex = null;
                                 destinationHex = null;
                                 pieceToMove = null;
@@ -237,8 +324,6 @@ public class Game {
 
                         }
                     }
-
-                    hexPanel.repaint();
                     break;
                 }
             }
@@ -262,6 +347,23 @@ public class Game {
         @Override
         public void mouseExited(MouseEvent e) {
 
+        }
+
+    }
+
+    class GameMessagePanel extends JPanel {
+
+        void pieceMoved(Cell startCell, Cell endCell) {
+            currentMessage = endCell.getPiece().getTeam().getName() + " moved from ("
+                            + startCell.col() + ", " + startCell.row() + ") to ("
+                            + endCell.col() + ", " + endCell.row() + ").";
+            currentMessageDisplay.setText(currentMessage);
+        }
+
+        @Override
+        public void paintComponent(Graphics g) {
+            g.setColor(Color.RED);
+            g.drawString(currentMessage, 100, 0);
         }
 
     }

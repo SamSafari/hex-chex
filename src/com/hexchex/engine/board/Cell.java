@@ -2,7 +2,9 @@ package com.hexchex.engine.board;
 
 import com.hexchex.engine.pieces.*;
 
-public abstract class Cell {
+import java.io.Serializable;
+
+public abstract class Cell implements Serializable {
 
     private final int row;
     private final int col;

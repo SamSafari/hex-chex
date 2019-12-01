@@ -4,7 +4,9 @@ import com.hexchex.engine.pieces.IllegalMoveException;
 import com.hexchex.engine.pieces.Piece;
 import com.hexchex.engine.pieces.Team;
 
-public class Board {
+import java.io.Serializable;
+
+public class Board implements Serializable {
 
     private Cell[][] board;
     private final int BOARD_WIDTH;
