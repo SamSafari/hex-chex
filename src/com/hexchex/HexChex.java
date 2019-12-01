@@ -31,6 +31,8 @@ public class HexChex implements Serializable {
         return team2;
     }
 
+
+
     public static void main(String[] args) {
 
         Board board = new Board(9, 8);

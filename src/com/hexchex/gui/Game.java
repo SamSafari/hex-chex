@@ -7,12 +7,11 @@ import com.hexchex.engine.pieces.Piece;
 import com.hexchex.engine.pieces.Team;
 
 import javax.swing.*;
-import javax.swing.text.MaskFormatter;
-import javax.swing.text.NumberFormatter;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 
 import static javax.swing.SwingUtilities.*;
@@ -20,11 +19,14 @@ import static javax.swing.SwingUtilities.*;
 public class Game implements Serializable {
 
     private final JFrame gameFrame;
+    private Point gameFrameCenterpoint;
     private final HexPanel hexPanel;
     private GameMessagePanel messagePanel;
     private JLabel currentMessageDisplay;
 
-    private String currentMessage = "xD";
+    private boolean gameEnded = false;
+    private Team winningTeam;
+    private String currentMessage = "";
     private Team currentMove;
     private Hexagon sourceHex, destinationHex;
     private Piece pieceToMove;
@@ -39,8 +41,9 @@ public class Game implements Serializable {
 
         gameFrame = new JFrame("HexChex");
         gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        gameFrame.setSize(new Dimension(board.BOARD_WIDTH() * 100,
-                board.BOARD_HEIGHT() * 100 + 100));
+        gameFrame.setSize(new Dimension(board.getWidth() * 100,
+                board.getHeight() * 100 + 100));
+        gameFrameCenterpoint = new Point(gameFrame.getSize().width / 3, gameFrame.getSize().height / 3);
         gameFrame.setLayout(new BorderLayout());
 
         final JMenuBar gameMenuBar = createGameMenuBar();
@@ -83,184 +86,21 @@ public class Game implements Serializable {
         return gameMenuBar;
     }
 
-    private MaskFormatter createFormatter(String s) {
-        MaskFormatter formatter = null;
-        try {
-            formatter = new MaskFormatter(s);
-        } catch (java.text.ParseException e) {
-            System.err.println("formatter is bad: " + e.getMessage());
-            System.exit(-1);
-        }
-        return formatter;
-    }
-
     private JMenu createEditMenu() {
 
         final JMenu editMenu = new JMenu("Edit");
 
-        final JMenuItem resizeBoard = new JMenuItem("Resize board");
-
-        resizeBoard.addActionListener(e -> {
-
-            final int[] newWidth = new int[1];
-            final int[] newHeight = new int[1];
-            final boolean[] dimensionsValid = {false, false};
-
-
-            final JFrame resizePopout = new JFrame("Resize board");
-            final JPanel resizeInput = new JPanel();
-
-            resizePopout.setLayout(new GridBagLayout());
-            resizePopout.setSize(250, 250);
-            resizePopout.add(resizeInput);
-
-            JTextField widthField = new JTextField("width");
-            widthField.setToolTipText("width");
-
-            JTextField heightField = new JTextField("height");
-            heightField.setToolTipText("height");
-
-            JButton createBoardButton = new JButton("Create board");
-            createBoardButton.setEnabled(false);
-
-            widthField.addFocusListener(new FocusAdapter() {
-                @Override
-                public void focusLost(FocusEvent e) {
-                    if (widthField.getText().equals("")) {
-                        widthField.setText("width");
-                    }
-                    try {
-                        newWidth[0] = Integer.parseInt(widthField.getText());
-                        dimensionsValid[0] = true;
-                        if (dimensionsValid[0] && dimensionsValid[1]) {
-                            createBoardButton.setEnabled(true);
-                        }
-                        if (newWidth[0] < 5 || newWidth[0] > 100) {
-                            widthField.setText("");
-                        }
-                    } catch(NumberFormatException nfe) {
-                        widthField.setText("");
-                    }
-                }
-            });
-            widthField.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    if (widthField.getText().equals("width")) {
-                        widthField.setText("");
-                    }
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    if (widthField.getText().equals("")) {
-                        widthField.setText("width");
-                    }
-                }
-            });
-
-            heightField.addFocusListener(new FocusAdapter() {
-                @Override
-                public void focusLost(FocusEvent e) {
-                    if (heightField.getText().equals("")) {
-                        heightField.setText("height");
-                    }
-                    try {
-                        newHeight[0] = Integer.parseInt(heightField.getText());
-                        dimensionsValid[1] = true;
-                        if (dimensionsValid[0] && dimensionsValid[1]) {
-                            createBoardButton.setEnabled(true);
-                        }
-                        if (newHeight[0] < 5 || newHeight[0] > 100) {
-                            heightField.setText("");
-                        }
-                    } catch(NumberFormatException nfe) {
-                        heightField.setText("");
-                    }
-                }
-            });
-            heightField.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    if (heightField.getText().equals("height")) {
-                        heightField.setText("");
-                    }
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    if (heightField.getText().equals("")) {
-                        heightField.setText("height");
-                    }
-                }
-            });
-
-            createBoardButton.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-
-                    Board newBoard = new Board(newWidth[0], newHeight[0]);
-                    JFrame confirmResizeWindow = new JFrame("Confirm resize");
-                    confirmResizeWindow.setSize(500, 500);
-                    confirmResizeWindow.setLayout(new GridBagLayout());
-
-                    JButton resizeButton = new JButton("Resize");
-                    resizeButton.setBorderPainted(true);
-
-                    JButton cancelButton = new JButton("Cancel");
-                    JLabel resizeWarning = new JLabel("Resizing the board will cause all current game progress \n" +
-                            "to be lost. Continue?");
-
-                    GridBagConstraints c = new GridBagConstraints();
-                    c.fill = GridBagConstraints.PAGE_START;
-                    c.weightx = 0.5;
-                    c.gridx = 0;
-                    c.gridy = 0;
-                    confirmResizeWindow.add(resizeWarning, c);
-
-                    c.fill = GridBagConstraints.LINE_START;
-                    c.weightx = 0.5;
-                    c.gridx = 0;
-                    c.gridy = 1;
-                    confirmResizeWindow.add(resizeButton, c);
-
-                    c.fill = GridBagConstraints.LINE_END;
-                    c.weightx = 0.5;
-                    c.gridx = 1;
-                    c.gridy = 1;
-                    confirmResizeWindow.add(cancelButton, c);
-
-
-                    resizeButton.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            Game newGame = new Game(new HexChex(newBoard, team1, team2));
-                            confirmResizeWindow.dispose();
-                            resizePopout.dispose();
-                            gameFrame.dispose();
-                        }
-                    });
-
-                    cancelButton.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            confirmResizeWindow.dispose();
-                        }
-                    });
-
-                    confirmResizeWindow.setVisible(true);
-
-                }
-            });
-
-            resizeInput.add(widthField);
-            resizeInput.add(heightField);
-            resizeInput.add(createBoardButton);
-
-            resizePopout.setVisible(true);
-
+        final JMenuItem editTeams = new JMenuItem("Edit teams");
+        editTeams.addActionListener(e -> {
+            EditTeamFrame editTeamFrame = new EditTeamFrame();
         });
 
+        final JMenuItem resizeBoard = new JMenuItem("Resize board");
+        resizeBoard.addActionListener(e -> {
+                ResizeBoardFrame resizeBoardFrame = new ResizeBoardFrame();
+        });
+
+        editMenu.add(editTeams);
         editMenu.add(resizeBoard);
 
         return editMenu;
@@ -268,6 +108,11 @@ public class Game implements Serializable {
 
     private JMenu createFileMenu() {
         final JMenu fileMenu = new JMenu("File");
+
+        final JMenuItem newGame = new JMenuItem("New game");
+        newGame.addActionListener(e -> {
+            NewGameFrame newGameFrame = new NewGameFrame();
+        });
 
         final JMenuItem saveGame = new JMenuItem("Save game");
         saveGame.addActionListener(e -> {
@@ -308,6 +153,7 @@ public class Game implements Serializable {
 
         });
 
+        fileMenu.add(newGame);
         fileMenu.add(saveGame);
         fileMenu.add(loadGame);
         fileMenu.add(deleteSaves);
@@ -408,97 +254,87 @@ public class Game implements Serializable {
         @Override
         public void mouseClicked(MouseEvent e) {
 
-            Point p = e.getPoint();
-            ArrayList<Hexagon> hexes = hexPanel.hexList;
-            for(Hexagon hex : hexes) {
+            if (!gameEnded) {
 
-                if (hex.contains(p)) {
+                Point p = e.getPoint();
+                ArrayList<Hexagon> hexes = hexPanel.hexList;
+                for(Hexagon hex : hexes) {
 
-                    if (isMiddleMouseButton(e)) {
-                        System.out.println("(" + hex.getCell().col() + ", " + hex.getCell().row() + ")");
-                    }
+                    if (hex.contains(p)) {
 
-                    if (isLeftMouseButton(e)) {
-
-                        if (sourceHex == null) {
-                            sourceHex = hex;
-
-                            if (hex.getCell().isOccupied()) {
-
-                                if (hex.getCell().getPiece().getTeam() != currentMove) {
-                                    System.out.println(currentMove.getName() + "'s move.");
-                                    sourceHex = null;
-                                } else {
-                                    pieceToMove = sourceHex.getCell().getPiece();
-                                    System.out.println("Source selected");
-                                }
-
-                            } else {
-                                sourceHex = null;
-                                System.out.println("No piece on cell");
-                            }
-
-                        } else {
-
-                            destinationHex = hex;
-
-                            hexPanel.repaint();
-                            System.out.print("\nDestination selected");
-
-                            if (pieceToMove.move(sourceHex.getCell(), destinationHex.getCell())) {
-
-                                sourceHex.setCell(new Cell.EmptyCell(sourceHex.getCell()));
-                                destinationHex.setCell(new Cell.OccupiedCell(destinationHex.getCell(), pieceToMove));
-
-                                System.out.print(" (Legal)\n");
-                                System.out.println(board);
-                                System.out.print("Move successful\n");
-                                //messagePanel.pieceMoved(sourceHex.getCell(), destinationHex.getCell());
-
-                                if (currentMove == team1) {
-                                    currentMove = team2;
-                                } else {
-                                    currentMove = team1;
-                                }
-
-                                sourceHex = null;
-                                destinationHex = null;
-                                pieceToMove = null;
-
-                            } else {
-
-                                sourceHex = null;
-                                destinationHex = null;
-                                pieceToMove = null;
-
-                                System.out.print(" (Illegal)\n");
-                            }
-
+                        if (isMiddleMouseButton(e)) {
+                            System.out.println("(" + hex.getCell().col() + ", " + hex.getCell().row() + ")");
                         }
+
+                        if (isLeftMouseButton(e)) {
+
+                            if (sourceHex == null) {
+                                sourceHex = hex;
+
+                                if (hex.getCell().isOccupied()) {
+
+                                    if (hex.getCell().getPiece().getTeam() != currentMove) {
+                                        System.out.println(currentMove.getName() + "'s move.");
+                                        sourceHex = null;
+                                    } else {
+                                        pieceToMove = sourceHex.getCell().getPiece();
+                                        System.out.println("Source selected\n");
+                                    }
+
+                                } else {
+                                    sourceHex = null;
+                                    System.out.println("No piece on cell\n");
+                                }
+
+                            } else {
+
+                                destinationHex = hex;
+
+                                hexPanel.repaint();
+                                System.out.print("\nDestination selected");
+
+                                if (pieceToMove.move(sourceHex.getCell(), destinationHex.getCell())) {
+
+                                    sourceHex.setCell(new Cell.EmptyCell(sourceHex.getCell()));
+                                    destinationHex.setCell(new Cell.OccupiedCell(destinationHex.getCell(), pieceToMove));
+
+                                    System.out.print(" (Legal)\n");
+                                    System.out.println(board);
+                                    System.out.print("Move successful\n");
+
+                                    if (team1.getNumPieces() == 0 || team2.getNumPieces() == 0) {
+                                        winningTeam = currentMove;
+                                        System.out.println(winningTeam.getName() + " wins!\n");
+                                        gameEnded = true;
+                                        EndScreenFrame endScreenFrame = new EndScreenFrame();
+                                    }
+                                    //messagePanel.pieceMoved(sourceHex.getCell(), destinationHex.getCell());
+
+                                    if (currentMove == team1) {
+                                        currentMove = team2;
+                                    } else {
+                                        currentMove = team1;
+                                    }
+
+                                    sourceHex = null;
+                                    destinationHex = null;
+                                    pieceToMove = null;
+
+                                } else {
+
+                                    sourceHex = null;
+                                    destinationHex = null;
+                                    pieceToMove = null;
+
+                                    System.out.print(" (Illegal)\n");
+                                }
+
+                            }
+                        }
+                        break;
                     }
-                    break;
                 }
             }
-        }
-
-        @Override
-        public void mousePressed(MouseEvent e) {
-
-        }
-
-        @Override
-        public void mouseReleased(MouseEvent e) {
-
-        }
-
-        @Override
-        public void mouseEntered(MouseEvent e) {
-
-        }
-
-        @Override
-        public void mouseExited(MouseEvent e) {
-
         }
 
     }
@@ -520,6 +356,244 @@ public class Game implements Serializable {
 
     }
 
+    class EndScreenFrame extends JFrame {
+
+        private EndScreenFrame() {
+            setSize(250,100);
+            setLocation(gameFrameCenterpoint);
+            add(new EndScreenPanel());
+            setVisible(true);
+        }
+
+        class EndScreenPanel extends JPanel {
+
+            JLabel winnerLabel = new JLabel(winningTeam.getName() + " wins!");
+            JButton rematchButton = new JButton("Rematch");
+            JButton newGameButton = new JButton("New game");
+
+            private EndScreenPanel() {
+                add(winnerLabel);
+                add(rematchButton);
+                add(newGameButton);
+
+                rematchButton.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        gameFrame.dispose();
+                        Game rematch = new Game(new HexChex(new Board(board.getWidth(), board.getHeight()), team1, team2));
+                    }
+                });
+
+                newGameButton.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        ResizeBoardFrame resizeBoardFrame = new ResizeBoardFrame();
+                    }
+                });
+            }
+        }
+
+    }
+
+    class ResizeBoardFrame extends JFrame {
+
+        private ResizeBoardFrame() {
+            setTitle("Resize board");
+            setLayout(new GridBagLayout());
+            setLocation(gameFrameCenterpoint);
+            setSize(500, 500);
+            add(new ResizeInputPanel());
+            setVisible(true);
+        }
+
+        class ResizeInputPanel extends JPanel {
+
+            static final int DIM_MIN = 5;
+            static final int DIM_MAX = 50;
+            final int WIDTH_INIT = board.getWidth();
+            final int HEIGHT_INIT = board.getHeight();
+
+            JSlider widthSlider = new JSlider(JSlider.HORIZONTAL, DIM_MIN, DIM_MAX, WIDTH_INIT);
+            JSlider heightSlider = new JSlider(JSlider.VERTICAL, DIM_MIN, DIM_MAX, HEIGHT_INIT);
+            JButton confirmButton = new JButton("Confirm");
+            JButton cancelButton = new JButton("Cancel");
+
+            Game tempGame;
+
+
+            private ResizeInputPanel() {
+
+                add(widthSlider);
+                add(heightSlider);
+                add(confirmButton);
+                add(cancelButton);
+
+                widthSlider.addChangeListener(new ChangeListener() {
+                    @Override
+                    public void stateChanged(ChangeEvent e) {
+                        board.setWidth(widthSlider.getValue());
+                        board.setupDefaultBoard(team1, team2);
+                        hexPanel.repaint();
+                    }
+                });
+
+                heightSlider.addChangeListener(new ChangeListener() {
+                    @Override
+                    public void stateChanged(ChangeEvent e) {
+                        board.setHeight(heightSlider.getValue());
+                        board.setupDefaultBoard(team1, team2);
+                        hexPanel.repaint();
+                    }
+                });
+
+                confirmButton.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        Game resized = new Game(new HexChex(new Board(board.getWidth(), board.getHeight()), team1, team2));
+                        gameFrame.dispose();
+                        dispose();
+                    }
+                });
+
+                cancelButton.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        Game reverted = new Game(new HexChex(new Board(WIDTH_INIT, HEIGHT_INIT), team1, team2));
+                        gameFrame.dispose();
+                        dispose();
+                    }
+                });
+
+            }
+        }
+    }
+
+    private class NewGameFrame extends JFrame {
+
+        private NewGameFrame() {
+            setTitle("New game");
+            setLayout(new GridBagLayout());
+            setLocation(gameFrameCenterpoint);
+            setSize(500, 250);
+            add(new NewGamePanel());
+            setVisible(true);
+        }
+
+        private class NewGamePanel extends JPanel {
+
+            JButton setBoardSizeButton = new JButton("Set board size");
+            JButton editTeamButton = new JButton("Edit teams");
+            JButton startGameButton = new JButton("Start game");
+
+            private NewGamePanel() {
+
+                add(setBoardSizeButton);
+                add(editTeamButton);
+                add(startGameButton);
+
+                setBoardSizeButton.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        ResizeBoardFrame resizeBoardFrame = new ResizeBoardFrame();
+                    }
+                });
+
+                editTeamButton.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        EditTeamFrame editTeamFrame = new EditTeamFrame();
+                    }
+                });
+
+                startGameButton.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        dispose();
+                    }
+                });
+
+            }
+
+        }
+
+    }
+
+    class EditTeamFrame extends JFrame {
+
+        private EditTeamFrame() {
+            setTitle("Edit teams");
+            setLayout(new GridBagLayout());
+            setLocation(gameFrameCenterpoint);
+            setSize(1750, 500);
+
+            EditTeamPanel team1Panel = new EditTeamPanel(team1);
+
+            EditTeamPanel team2Panel = new EditTeamPanel(team2);
+
+            JButton confirmButton = new JButton("Confirm");
+
+            add(team1Panel);
+            add(team2Panel);
+            add(confirmButton);
+
+            confirmButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    team1.setName(team1Panel.teamNameField.getText());
+                    team2.setName(team2Panel.teamNameField.getText());
+                    dispose();
+                }
+            });
+
+            setVisible(true);
+        }
+
+        class EditTeamPanel extends JPanel {
+
+            private Team team;
+
+            JColorChooser teamColorChooser;
+            JLabel teamNameLabel = new JLabel("Team name");
+            JTextField teamNameField;
+
+
+            void setTeam(Team team) {
+                this.team = team;
+            }
+
+            private EditTeamPanel(Team team) {
+
+                this.team = team;
+
+                setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+
+                teamNameField = new JTextField(team.getName());
+                teamColorChooser = new JColorChooser(team.getColor());
+
+                add(teamColorChooser);
+                add(teamNameLabel);
+                add(teamNameField);
+
+                teamColorChooser.getSelectionModel().addChangeListener(new ChangeListener() {
+                    @Override
+                    public void stateChanged(ChangeEvent e) {
+                        team.setColor(teamColorChooser.getColor());
+                        hexPanel.repaint();
+                    }
+                });
+
+                teamNameField.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        team.setName(teamNameField.getText());
+                    }
+                });
+
+            }
+
+        }
+
+    }
 
 }
 

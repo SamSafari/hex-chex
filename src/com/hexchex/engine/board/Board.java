@@ -9,15 +9,25 @@ import java.io.Serializable;
 public class Board implements Serializable {
 
     private Cell[][] board;
-    private final int BOARD_WIDTH;
-    private final int BOARD_HEIGHT;
+    private int width;
+    private int height;
 
-    public int BOARD_WIDTH() {
-        return BOARD_WIDTH;
+    public int getWidth() {
+        return width;
     }
 
-    public int BOARD_HEIGHT() {
-        return BOARD_HEIGHT;
+    public int getHeight() {
+        return height;
+    }
+
+    public void setWidth(int width) {
+        this.width = width;
+        generateBoard();
+    }
+
+    public void setHeight(int height) {
+        this.height = height;
+        generateBoard();
     }
 
     /**
@@ -27,7 +37,7 @@ public class Board implements Serializable {
      */
     public Cell[][] generateBoard() {
 
-        board = new Cell[BOARD_HEIGHT * 2][BOARD_WIDTH];
+        board = new Cell[height * 2][width];
         int cellIDCounter = 0;
 
         for(int row = 0; row < board.length; row++) {
@@ -56,8 +66,8 @@ public class Board implements Serializable {
     }
 
     public Board(int width, int height) {
-        this.BOARD_WIDTH = width;
-        this.BOARD_HEIGHT = height;
+        this.width = width;
+        this.height = height;
         board = generateBoard();
     }
 
@@ -94,27 +104,30 @@ public class Board implements Serializable {
 
     public void setupDefaultBoard(Team team1, Team team2) {
 
-        for (int col = 0; col < BOARD_WIDTH; col++) {
+        team1.clearPieces();
+        team2.clearPieces();
+
+        for (int col = 0; col < width; col++) {
             if (board[0][col] != null) {
                 addPiece(0, col, new Piece(0, col, team1, this));
             }
         }
 
-        for (int col = 0; col < BOARD_WIDTH; col++) {
+        for (int col = 0; col < width; col++) {
             if (board[1][col] != null) {
                 addPiece(1, col, new Piece(1, col, team1, this));
             }
         }
 
-        for (int col = 0; col < BOARD_WIDTH; col++) {
-            if (board[BOARD_HEIGHT*2-1][col] != null) {
-                addPiece(BOARD_HEIGHT * 2 - 1, col, new Piece(BOARD_HEIGHT * 2 - 1, col, team2, this));
+        for (int col = 0; col < width; col++) {
+            if (board[height *2-1][col] != null) {
+                addPiece(height * 2 - 1, col, new Piece(height * 2 - 1, col, team2, this));
             }
         }
 
-        for (int col = 0; col < BOARD_WIDTH; col++) {
-            if (board[BOARD_HEIGHT * 2 - 2][col] != null) {
-                addPiece(BOARD_HEIGHT * 2 - 2, col, new Piece(BOARD_HEIGHT * 2 - 2, col, team2, this));
+        for (int col = 0; col < width; col++) {
+            if (board[height * 2 - 2][col] != null) {
+                addPiece(height * 2 - 2, col, new Piece(height * 2 - 2, col, team2, this));
             }
         }
 

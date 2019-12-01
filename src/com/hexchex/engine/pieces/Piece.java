@@ -105,6 +105,11 @@ public class Piece implements Serializable {
     private void executeMove(Cell startCell, Cell endCell) {
 
         int oldCellID = position.getCellID();
+
+        if (endCell.isOccupied()) {
+            endCell.getPiece().getTeam().removePiece(endCell.getPiece());
+        }
+
         setPosition(endCell);
 
         startCell = new Cell.EmptyCell(startCell.row(), startCell.col(), oldCellID);

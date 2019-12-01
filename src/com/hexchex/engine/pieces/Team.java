@@ -49,4 +49,17 @@ public class Team implements Serializable {
     public void setColor(Color color) {
         this.color = color;
     }
+
+    public int getNumPieces() {
+        return numPieces;
+    }
+
+    public void clearPieces() {
+        pieces.clear();
+        numPieces = 0;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 }
