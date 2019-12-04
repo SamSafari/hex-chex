@@ -12,10 +12,12 @@ public class Hexagon extends Polygon {
     private Point center;
     private int radius;
     private int rotation = 0;
+
     private Color color;
     private Color defaultColor;
     private Color hoverColor = Color.GREEN;
     private Color selectedColor = new Color(200, 200, 100);
+
     private Cell cell;
 
     public Hexagon(Point center, int radius, Cell cell) {

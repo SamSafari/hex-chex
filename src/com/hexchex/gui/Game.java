@@ -25,7 +25,7 @@ public class Game implements Serializable {
 
 
     public static Game instance;
-    private final JFrame gameFrame;
+    private  JFrame gameFrame;
     private Point gameFrameCenterpoint;
     public HexPanel hexPanel;
     private GameMessagePanel messagePanel;
@@ -37,8 +37,17 @@ public class Game implements Serializable {
     private Team currentMove;
     private Hexagon sourceHex, destinationHex;
     private Piece pieceToMove;
-    private final Board board;
-    private final Team team1, team2;
+    private  Board board;
+    private Team team1, team2;
+
+
+
+    private Dimension calculateGameFrameDimension() {
+        return new Dimension(board.getWidth() * 100,
+                board.getHeight() * 100 + 125);
+    }
+
+    private Dimension gameFrameDimension;
 
     public Game(HexChex hexChex) {
 
@@ -51,8 +60,8 @@ public class Game implements Serializable {
 
         gameFrame = new JFrame("HexChex");
         gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        gameFrame.setSize(new Dimension(board.getWidth() * 100,
-                board.getHeight() * 100 + 100));
+        gameFrameDimension = calculateGameFrameDimension();
+        gameFrame.setSize(gameFrameDimension);
         gameFrameCenterpoint = new Point(gameFrame.getSize().width / 3, gameFrame.getSize().height / 3);
         gameFrame.setLayout(new BorderLayout());
 
@@ -72,11 +81,15 @@ public class Game implements Serializable {
             public void mouseClicked(MouseEvent e) {
                 if (isRightMouseButton(e)) {
                     if (sourceHex != null) {
+
                         sourceHex.setToDefaultColor();
+
                         sourceHex = null;
                         destinationHex = null;
                         pieceToMove = null;
+
                         System.out.println("Cancelled");
+
                         hexPanel.repaint();
                     }
                 }
@@ -440,7 +453,7 @@ public class Game implements Serializable {
         class ResizeInputPanel extends JPanel {
 
             static final int DIM_MIN = 5;
-            static final int DIM_MAX = 50;
+            static final int DIM_MAX = 16;
             final int WIDTH_INIT = board.getWidth();
             final int HEIGHT_INIT = board.getHeight();
 
@@ -464,8 +477,11 @@ public class Game implements Serializable {
                     public void stateChanged(ChangeEvent e) {
                         board.setWidth(widthSlider.getValue());
                         board.setupDefaultBoard(team1, team2);
-                        hexPanel = new HexPanel();
+                        hexPanel.createHexes();
                         hexPanel.repaint();
+
+                        gameFrameDimension = calculateGameFrameDimension();
+                        gameFrame.setSize(calculateGameFrameDimension());
                     }
                 });
 
@@ -474,8 +490,11 @@ public class Game implements Serializable {
                     public void stateChanged(ChangeEvent e) {
                         board.setHeight(heightSlider.getValue());
                         board.setupDefaultBoard(team1, team2);
-                        hexPanel = new HexPanel();
+                        hexPanel.createHexes();
                         hexPanel.repaint();
+
+                        gameFrameDimension = calculateGameFrameDimension();
+                        gameFrame.setSize(calculateGameFrameDimension());
                     }
                 });
 
