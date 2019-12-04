@@ -18,9 +18,16 @@ import static javax.swing.SwingUtilities.*;
 
 public class Game implements Serializable {
 
+    public static Game getInstance() {
+        return instance;
+    }
+
+
+
+    public static Game instance;
     private final JFrame gameFrame;
     private Point gameFrameCenterpoint;
-    private final HexPanel hexPanel;
+    public HexPanel hexPanel;
     private GameMessagePanel messagePanel;
     private JLabel currentMessageDisplay;
 
@@ -34,6 +41,9 @@ public class Game implements Serializable {
     private final Team team1, team2;
 
     public Game(HexChex hexChex) {
+
+        instance = this;
+
         board = hexChex.getBoard();
         team1 = hexChex.getTeam1();
         team2 = hexChex.getTeam2();
@@ -61,10 +71,14 @@ public class Game implements Serializable {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (isRightMouseButton(e)) {
-                    sourceHex = null;
-                    destinationHex = null;
-                    pieceToMove = null;
-                    System.out.println("Cancelled");
+                    if (sourceHex != null) {
+                        sourceHex.setToDefaultColor();
+                        sourceHex = null;
+                        destinationHex = null;
+                        pieceToMove = null;
+                        System.out.println("Cancelled");
+                        hexPanel.repaint();
+                    }
                 }
             }
 
@@ -161,10 +175,49 @@ public class Game implements Serializable {
         return fileMenu;
     }
 
+    public class HexPanel extends JPanel {
 
-    private class HexPanel extends JPanel {
+        private HexPanel() {
+            createHexes();
+        }
 
         ArrayList<Hexagon> hexList = new ArrayList<>();
+
+        private void createHexes() {
+
+            int radius = 50;
+            hexList.clear();
+
+            for(int row = 0; row < board.getBoard().length; row++) {
+                for(int col = 0; col < board.getBoard()[row].length; col++) {
+
+                    if (col % 2 == 0) {
+                        if (row % 2 == 0) {
+
+                            Point hexCenter = new Point(col * 80 + (2 * radius), row * 45 + (2 * radius));
+                            Hexagon hex = new Hexagon(hexCenter, radius, board.getBoard()[row][col]);
+                            hex.setDefaultColor(Color.DARK_GRAY);
+                            hex.setToDefaultColor();
+
+                            hexList.add(hex);
+
+                        }
+
+                    } else if (row % 2 != 0) {
+
+                        Point hexCenter = new Point(col * 80 + (2 * radius), row * 45 + (2 * radius));
+                        Hexagon hex = new Hexagon(hexCenter, radius, board.getBoard()[row][col]);
+                        hex.setDefaultColor(Color.DARK_GRAY);
+                        hex.setToDefaultColor();
+
+                        hexList.add(hex);
+
+                    }
+
+                }
+            }
+        }
+
 
         /**
          * Generates a graphical representation of the board with properly tessellated Hexagons, each with its own
@@ -176,68 +229,35 @@ public class Game implements Serializable {
 
             int radius = 50;
             setBackground(Color.LIGHT_GRAY);
+            Color boardColor = Color.DARK_GRAY;
 
            /* g.setColor(new Color(200, 150, 100));
             g.setColor(new Color(100, 70, 30));
             g.setColor(new Color(150, 100, 50));
             g.setColor(new Color(75, 50, 30));*/
 
-            Color boardColor = new Color(75, 75, 75);
-            g.setColor(boardColor);
+           for (Hexagon hex : hexList) {
+               g.setColor(hex.getColor());
+               g.fillPolygon(hex);
+               g.setColor(boardColor);
 
-            for(int row = 0; row < board.getBoard().length; row++) {
-                for(int col = 0; col < board.getBoard()[row].length; col++) {
+               if (hex.getCell().isOccupied()) {
+                   Color temp = g.getColor();
 
-                    if (col % 2 == 0) {
-                        if (row % 2 == 0) {
+                   Color color = hex.getCell().getPiece().getTeam().getColor();
+                   g.setColor(color);
+                   g.fillOval(hex.getCenter().x - (radius / 2), hex.getCenter().y - (radius / 2), radius, radius);
 
-                            Point hexCenter = new Point(col * 80 + (2 * radius), row * 45 + (2 * radius));
-                            Hexagon hex = new Hexagon(hexCenter, radius, board.getBoard()[row][col]);
+                   g.setColor(temp);
+               }
 
-                            g.fillPolygon(hex);
-                            hexList.add(hex);
+           }
 
-
-                            if (hex.getCell().isOccupied()) {
-
-                                Color temp = g.getColor();
-
-                                Color color = hex.getCell().getPiece().getTeam().getColor();
-                                g.setColor(color);
-                                g.fillOval(hexCenter.x - (radius / 2), hexCenter.y - (radius / 2), radius, radius);
-
-                                g.setColor(temp);
-
-                            }
-                        }
-
-                    } else if (row % 2 != 0) {
-
-                        Point hexCenter = new Point(col * 80 + (2 * radius), row * 45 + (2 * radius));
-                        Hexagon hex = new Hexagon(hexCenter, radius, board.getBoard()[row][col]);
-
-                        g.fillPolygon(hex);
-                        hexList.add(hex);
-
-                        if (hex.getCell().isOccupied()) {
-                            Color temp = g.getColor();
-
-                            Color color = hex.getCell().getPiece().getTeam().getColor();
-                            g.setColor(color);
-                            g.fillOval(hexCenter.x - (radius / 2), hexCenter.y - (radius / 2), radius, radius);
-
-                            g.setColor(temp);
-                        }
-                    }
-
-                }
-            }
-
-        } //end paintComponent()
+        }
 
     }
 
-    private class HexSelector extends MouseAdapter {
+    private class HexSelector extends MouseAdapter implements MouseMotionListener {
 
         HexPanel hexPanel;
 
@@ -257,9 +277,8 @@ public class Game implements Serializable {
             if (!gameEnded) {
 
                 Point p = e.getPoint();
-                ArrayList<Hexagon> hexes = hexPanel.hexList;
-                for(Hexagon hex : hexes) {
 
+                for(Hexagon hex : hexPanel.hexList) {
                     if (hex.contains(p)) {
 
                         if (isMiddleMouseButton(e)) {
@@ -269,6 +288,7 @@ public class Game implements Serializable {
                         if (isLeftMouseButton(e)) {
 
                             if (sourceHex == null) {
+
                                 sourceHex = hex;
 
                                 if (hex.getCell().isOccupied()) {
@@ -279,21 +299,31 @@ public class Game implements Serializable {
                                     } else {
                                         pieceToMove = sourceHex.getCell().getPiece();
                                         System.out.println("Source selected\n");
+
+                                        sourceHex.setToSelectedColor();
+                                        hexPanel.repaint();
                                     }
 
                                 } else {
+                                    sourceHex.setToDefaultColor();
+                                    hexPanel.repaint();
+
                                     sourceHex = null;
+
                                     System.out.println("No piece on cell\n");
                                 }
 
-                            } else {
+                            } else if (hex != sourceHex) {
 
                                 destinationHex = hex;
 
                                 hexPanel.repaint();
+
                                 System.out.print("\nDestination selected");
 
                                 if (pieceToMove.move(sourceHex.getCell(), destinationHex.getCell())) {
+
+                                    sourceHex.setToDefaultColor();
 
                                     sourceHex.setCell(new Cell.EmptyCell(sourceHex.getCell()));
                                     destinationHex.setCell(new Cell.OccupiedCell(destinationHex.getCell(), pieceToMove));
@@ -328,15 +358,16 @@ public class Game implements Serializable {
 
                                     System.out.print(" (Illegal)\n");
                                 }
-
                             }
+
                         }
+
                         break;
+
                     }
                 }
             }
         }
-
     }
 
     class GameMessagePanel extends JPanel {
@@ -433,6 +464,7 @@ public class Game implements Serializable {
                     public void stateChanged(ChangeEvent e) {
                         board.setWidth(widthSlider.getValue());
                         board.setupDefaultBoard(team1, team2);
+                        hexPanel = new HexPanel();
                         hexPanel.repaint();
                     }
                 });
@@ -442,6 +474,7 @@ public class Game implements Serializable {
                     public void stateChanged(ChangeEvent e) {
                         board.setHeight(heightSlider.getValue());
                         board.setupDefaultBoard(team1, team2);
+                        hexPanel = new HexPanel();
                         hexPanel.repaint();
                     }
                 });

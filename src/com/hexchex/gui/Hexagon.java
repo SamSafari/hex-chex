@@ -13,6 +13,9 @@ public class Hexagon extends Polygon {
     private int radius;
     private int rotation = 0;
     private Color color;
+    private Color defaultColor;
+    private Color hoverColor = Color.GREEN;
+    private Color selectedColor = new Color(200, 200, 100);
     private Cell cell;
 
     public Hexagon(Point center, int radius, Cell cell) {
@@ -23,7 +26,6 @@ public class Hexagon extends Polygon {
         this.center = center;
         this.radius = radius;
         this.cell = cell;
-        this.color = Color.WHITE;
 
         updatePoints();
     }
@@ -34,6 +36,30 @@ public class Hexagon extends Polygon {
 
     public void setColor(Color color) {
         this.color = color;
+    }
+
+    public Color getColor() {
+        return color;
+    }
+
+    public void setDefaultColor(Color color) {
+        this.defaultColor = color;
+    }
+
+    public Color getDefaultColor() {
+        return defaultColor;
+    }
+
+    public void setToDefaultColor() {
+        color = defaultColor;
+    }
+
+    public void setToHoverColor() {
+        color = hoverColor;
+    }
+
+    public void setToSelectedColor() {
+        color = selectedColor;
     }
 
     public void setCell(Cell cell) {
@@ -116,7 +142,6 @@ public class Hexagon extends Polygon {
         g.setColor(tmpC);
         g.setStroke(tmpS);
     }
-
 
 }
 
