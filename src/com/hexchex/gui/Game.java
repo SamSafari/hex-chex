@@ -9,61 +9,85 @@ import com.hexchex.engine.pieces.Team;
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.tree.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Objects;
 
 import static javax.swing.SwingUtilities.*;
 
-public class Game implements Serializable {
+public class Game implements Serializable, Cloneable {
+
+    private static final long serialVersionUID = 12345L;
 
     public static Game getInstance() {
         return instance;
     }
 
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
+    }
 
-
-    public static Game instance;
+    private static Game instance;
+    private static final File saveDirectory = new File("src/saves");
     private  JFrame gameFrame;
-    private Point gameFrameCenterpoint;
-    public HexPanel hexPanel;
+    private Point gameFrameCenter;
+    private HexPanel hexPanel;
     private GameMessagePanel messagePanel;
     private JLabel currentMessageDisplay;
 
     private boolean gameEnded = false;
     private Team winningTeam;
     private String currentMessage = "";
-    private Team currentMove;
     private Hexagon sourceHex, destinationHex;
     private Piece pieceToMove;
-    private  Board board;
+
+    public HexChex getHexChex() {
+        return hexChex;
+    }
+
+    private HexChex hexChex;
+    private Board board;
     private Team team1, team2;
+    private String gameName;
 
-
-
+    private Dimension gameFrameDimension;
     private Dimension calculateGameFrameDimension() {
         return new Dimension(board.getWidth() * 100,
                 board.getHeight() * 100 + 125);
     }
 
-    private Dimension gameFrameDimension;
+    private void setGameName(String gameName) {
+        this.gameName = gameName;
+    }
 
     public Game(HexChex hexChex) {
 
         instance = this;
 
+        this.hexChex = hexChex;
+
         board = hexChex.getBoard();
         team1 = hexChex.getTeam1();
         team2 = hexChex.getTeam2();
-        currentMove = team1;
+        gameName = hexChex.getGameName();
 
         gameFrame = new JFrame("HexChex");
+
+        if (gameName != null) {
+            gameFrame.setTitle("HexChex - " + gameName);
+        }
+
         gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         gameFrameDimension = calculateGameFrameDimension();
         gameFrame.setSize(gameFrameDimension);
-        gameFrameCenterpoint = new Point(gameFrame.getSize().width / 3, gameFrame.getSize().height / 3);
+        BorderLayout gameFrameLayout = new BorderLayout();
+        gameFrame.setLayout(gameFrameLayout);
+        gameFrameCenter = new Point(gameFrame.getSize().width / 3, gameFrame.getSize().height / 3);
         gameFrame.setLayout(new BorderLayout());
+        gameFrame.setResizable(false);
 
         final JMenuBar gameMenuBar = createGameMenuBar();
         gameFrame.setJMenuBar(gameMenuBar);
@@ -103,6 +127,8 @@ public class Game implements Serializable {
         gameFrame.add(hexPanel, BorderLayout.CENTER);
         hexPanel.setPreferredSize(gameFrame.getSize());
 
+        gameFrame.pack();
+
         gameFrame.setVisible(true);
     }
 
@@ -119,12 +145,14 @@ public class Game implements Serializable {
 
         final JMenuItem editTeams = new JMenuItem("Edit teams");
         editTeams.addActionListener(e -> {
-            EditTeamFrame editTeamFrame = new EditTeamFrame();
+            new EditTeamFrame();
         });
 
         final JMenuItem resizeBoard = new JMenuItem("Resize board");
         resizeBoard.addActionListener(e -> {
-                ResizeBoardFrame resizeBoardFrame = new ResizeBoardFrame();
+            ActionListener continueResize = e1 -> new ResizeBoardFrame();
+            new ConfirmPrompt("WARNING: Resizing the board will cause all current game progress to be lost!", "Continue",
+                    continueResize, "Resize warning");
         });
 
         editMenu.add(editTeams);
@@ -133,50 +161,47 @@ public class Game implements Serializable {
         return editMenu;
     }
 
+
+    private final JMenuItem loadGame = new JMenuItem("Load game");
+    private final JMenuItem newGame = new JMenuItem("New game");
+    private final JMenuItem saveGame = new JMenuItem("Save game");
+
+
     private JMenu createFileMenu() {
         final JMenu fileMenu = new JMenu("File");
 
-        final JMenuItem newGame = new JMenuItem("New game");
-        newGame.addActionListener(e -> {
-            NewGameFrame newGameFrame = new NewGameFrame();
-        });
+        newGame.addActionListener(e -> new NewGameFrame());
 
-        final JMenuItem saveGame = new JMenuItem("Save game");
-        saveGame.addActionListener(e -> {
-            try {
-                FileOutputStream fileOut = new FileOutputStream("C:\\Users\\Samer\\IdeaProjects\\CheckersGame\\src\\com\\hexchex\\saves.ser");
-                ObjectOutputStream objOut = new ObjectOutputStream(fileOut);
-                objOut.writeObject(new HexChex(board, team1, team2));
-                System.out.println("Game saved");
-            } catch(IOException ex) {
-                ex.printStackTrace();
-            }
-        });
+        saveGame.addActionListener(e -> new SaveGameFrame());
 
-        final JMenuItem loadGame = new JMenuItem("Load game");
-        saveGame.addActionListener(e -> {
-            try {
-                FileInputStream fileIn = new FileInputStream("C:\\Users\\Samer\\IdeaProjects\\CheckersGame\\src\\com\\hexchex\\saves.ser");
-                ObjectInputStream objIn = new ObjectInputStream(fileIn);
-                HexChex loadedHexChex = (HexChex) objIn.readObject();
-                gameFrame.dispose();
-                Game loadedGame = new Game(loadedHexChex);
-                System.out.println("Game loaded");
-            } catch(IOException | ClassNotFoundException ex) {
-                ex.printStackTrace();
-            }
-        });
+        loadGame.addActionListener(e -> new LoadGameFrame());
+        if (saveDirectory.listFiles() == null) {
+            loadGame.setEnabled(false);
+        }
 
         final JMenuItem deleteSaves = new JMenuItem("Delete saved games");
-        saveGame.addActionListener(e -> {
-                PrintWriter writer = null;
-                try {
-                    writer = new PrintWriter("C:\\Users\\Samer\\IdeaProjects\\CheckersGame\\src\\com\\hexchex\\saves.ser");
-                    writer.print("");
-                    writer.close();
-                } catch(FileNotFoundException ex) {
-                    ex.printStackTrace();
+        deleteSaves.addActionListener(e -> {
+
+            ActionListener deleteAllSaves = e1 -> {
+
+                int filesDeleted = 0;
+
+                for(File file : Objects.requireNonNull(saveDirectory.listFiles())) {
+                    file.delete();
+                    filesDeleted++;
                 }
+
+                if (filesDeleted == 0) {
+                    new NotificationPrompt("No save files to delete!", "No save files found");
+                } else {
+                    new NotificationPrompt(filesDeleted + " save files have been successfully deleted!", "Save files deleted");
+                }
+
+                loadGame.setEnabled(false);
+
+            };
+
+            new ConfirmPrompt("Are you sure you want to delete all saved games?", deleteAllSaves, "Delete saves");
 
         });
 
@@ -198,7 +223,7 @@ public class Game implements Serializable {
 
         private void createHexes() {
 
-            int radius = 50;
+            int hexRadius = 50;
             hexList.clear();
 
             for(int row = 0; row < board.getBoard().length; row++) {
@@ -207,8 +232,8 @@ public class Game implements Serializable {
                     if (col % 2 == 0) {
                         if (row % 2 == 0) {
 
-                            Point hexCenter = new Point(col * 80 + (2 * radius), row * 45 + (2 * radius));
-                            Hexagon hex = new Hexagon(hexCenter, radius, board.getBoard()[row][col]);
+                            Point hexCenter = new Point(col * 80 + (2 * hexRadius), row * 46 + (2 * hexRadius));
+                            Hexagon hex = new Hexagon(hexCenter, hexRadius, board.getBoard()[row][col]);
                             hex.setDefaultColor(Color.DARK_GRAY);
                             hex.setToDefaultColor();
 
@@ -218,8 +243,8 @@ public class Game implements Serializable {
 
                     } else if (row % 2 != 0) {
 
-                        Point hexCenter = new Point(col * 80 + (2 * radius), row * 45 + (2 * radius));
-                        Hexagon hex = new Hexagon(hexCenter, radius, board.getBoard()[row][col]);
+                        Point hexCenter = new Point(col * 80 + (2 * hexRadius), row * 46 + (2 * hexRadius));
+                        Hexagon hex = new Hexagon(hexCenter, hexRadius, board.getBoard()[row][col]);
                         hex.setDefaultColor(Color.DARK_GRAY);
                         hex.setToDefaultColor();
 
@@ -238,9 +263,13 @@ public class Game implements Serializable {
          */
         @Override
         public void paintComponent(Graphics g) {
+           paintComponent((Graphics2D)g);
+        }
+
+        private void paintComponent(Graphics2D g) {
             super.paintComponent(g);
 
-            int radius = 50;
+            int pieceRadius = 60;
             setBackground(Color.LIGHT_GRAY);
             Color boardColor = Color.DARK_GRAY;
 
@@ -249,28 +278,34 @@ public class Game implements Serializable {
             g.setColor(new Color(150, 100, 50));
             g.setColor(new Color(75, 50, 30));*/
 
-           for (Hexagon hex : hexList) {
-               g.setColor(hex.getColor());
-               g.fillPolygon(hex);
-               g.setColor(boardColor);
+            for (Hexagon hex : hexList) {
+                g.setColor(hex.getColor());
+                g.fillPolygon(hex);
+                g.setColor(boardColor);
 
-               if (hex.getCell().isOccupied()) {
-                   Color temp = g.getColor();
+                if (hex.getCell().isOccupied()) {
+                    Color tmpC = g.getColor();
+                    Stroke tmpS = g.getStroke();
 
-                   Color color = hex.getCell().getPiece().getTeam().getColor();
-                   g.setColor(color);
-                   g.fillOval(hex.getCenter().x - (radius / 2), hex.getCenter().y - (radius / 2), radius, radius);
 
-                   g.setColor(temp);
-               }
+                    Color color = hex.getCell().getPiece().getTeam().getColor();
+                    g.setColor(color);
+                    g.fillOval(hex.getCenter().x - (pieceRadius / 2), hex.getCenter().y - (pieceRadius / 2), pieceRadius, pieceRadius);
 
-           }
+                    g.setStroke(new BasicStroke(3));
+                    g.setColor(Color.BLACK);
+                    g.drawOval(hex.getCenter().x - (pieceRadius / 2), hex.getCenter().y - (pieceRadius / 2), pieceRadius, pieceRadius);
 
+                    g.setColor(tmpC);
+                    g.setStroke(tmpS);
+                }
+
+            }
         }
 
     }
 
-    private class HexSelector extends MouseAdapter implements MouseMotionListener {
+    private class HexSelector extends MouseAdapter {
 
         HexPanel hexPanel;
 
@@ -306,8 +341,8 @@ public class Game implements Serializable {
 
                                 if (hex.getCell().isOccupied()) {
 
-                                    if (hex.getCell().getPiece().getTeam() != currentMove) {
-                                        System.out.println(currentMove.getName() + "'s move.");
+                                    if (hex.getCell().getPiece().getTeam() != hexChex.getCurrentMove()) {
+                                        System.out.println(hexChex.getCurrentMove().getName() + "'s move.");
                                         sourceHex = null;
                                     } else {
                                         pieceToMove = sourceHex.getCell().getPiece();
@@ -346,17 +381,17 @@ public class Game implements Serializable {
                                     System.out.print("Move successful\n");
 
                                     if (team1.getNumPieces() == 0 || team2.getNumPieces() == 0) {
-                                        winningTeam = currentMove;
+                                        winningTeam = hexChex.getCurrentMove();
                                         System.out.println(winningTeam.getName() + " wins!\n");
                                         gameEnded = true;
-                                        EndScreenFrame endScreenFrame = new EndScreenFrame();
+                                        new EndScreenFrame();
                                     }
                                     //messagePanel.pieceMoved(sourceHex.getCell(), destinationHex.getCell());
 
-                                    if (currentMove == team1) {
-                                        currentMove = team2;
+                                    if (hexChex.getCurrentMove() == team1) {
+                                        hexChex.setCurrentMove(team2);
                                     } else {
-                                        currentMove = team1;
+                                        hexChex.setCurrentMove(team1);
                                     }
 
                                     sourceHex = null;
@@ -381,9 +416,16 @@ public class Game implements Serializable {
                 }
             }
         }
+
+        @Override
+        public void mouseEntered(MouseEvent e) {
+
+            hexPanel.setCursor(new Cursor(12));
+
+        }
     }
 
-    class GameMessagePanel extends JPanel {
+    private class GameMessagePanel extends JPanel {
 
         void pieceMoved(Cell startCell, Cell endCell) {
             currentMessage = endCell.getPiece().getTeam().getName() + " moved from ("
@@ -400,53 +442,46 @@ public class Game implements Serializable {
 
     }
 
-    class EndScreenFrame extends JFrame {
+    private class EndScreenFrame extends JFrame {
 
         private EndScreenFrame() {
             setSize(250,100);
-            setLocation(gameFrameCenterpoint);
+            setLocation(gameFrameCenter);
             add(new EndScreenPanel());
             setVisible(true);
         }
 
-        class EndScreenPanel extends JPanel {
-
-            JLabel winnerLabel = new JLabel(winningTeam.getName() + " wins!");
-            JButton rematchButton = new JButton("Rematch");
-            JButton newGameButton = new JButton("New game");
+        private class EndScreenPanel extends JPanel {
 
             private EndScreenPanel() {
+
+                JLabel winnerLabel = new JLabel(winningTeam.getName() + " wins!");
+                JButton rematchButton = new JButton("Rematch");
+                JButton newGameButton = new JButton("New game");
+
                 add(winnerLabel);
                 add(rematchButton);
                 add(newGameButton);
 
-                rematchButton.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        gameFrame.dispose();
-                        Game rematch = new Game(new HexChex(new Board(board.getWidth(), board.getHeight()), team1, team2));
-                    }
+                rematchButton.addActionListener(e -> {
+                    gameFrame.dispose();
+                    new Game(new HexChex(new Board(board.getWidth(), board.getHeight()), team1, team2));
                 });
 
-                newGameButton.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        ResizeBoardFrame resizeBoardFrame = new ResizeBoardFrame();
-                    }
-                });
+                newGameButton.addActionListener(e -> new ResizeBoardFrame());
             }
         }
 
     }
 
-    class ResizeBoardFrame extends JFrame {
+    private class ResizeBoardFrame extends JFrame {
 
         private ResizeBoardFrame() {
             setTitle("Resize board");
             setLayout(new GridBagLayout());
-            setLocation(gameFrameCenterpoint);
-            setSize(500, 500);
+            setLocation(gameFrameCenter);
             add(new ResizeInputPanel());
+            pack();
             setVisible(true);
         }
 
@@ -456,14 +491,29 @@ public class Game implements Serializable {
             static final int DIM_MAX = 16;
             final int WIDTH_INIT = board.getWidth();
             final int HEIGHT_INIT = board.getHeight();
+            final File tempSaveDirectory = new File("src/cache");
 
             JSlider widthSlider = new JSlider(JSlider.HORIZONTAL, DIM_MIN, DIM_MAX, WIDTH_INIT);
             JSlider heightSlider = new JSlider(JSlider.VERTICAL, DIM_MIN, DIM_MAX, HEIGHT_INIT);
             JButton confirmButton = new JButton("Confirm");
             JButton cancelButton = new JButton("Cancel");
 
-            Game tempGame;
+            private void createTempSave() {
+                try {
+                    Game save = (Game) instance.clone();
 
+                    FileOutputStream fileOut = new FileOutputStream(tempSaveDirectory.getPath() + "\\temp");
+                    ObjectOutputStream objOut = new ObjectOutputStream(fileOut);
+
+                    objOut.writeObject(save);
+                    objOut.close();
+
+                    System.out.println("Current game has been cached!");
+
+                } catch(IOException | CloneNotSupportedException ex) {
+                    ex.printStackTrace();
+                }
+            }
 
             private ResizeInputPanel() {
 
@@ -472,47 +522,50 @@ public class Game implements Serializable {
                 add(confirmButton);
                 add(cancelButton);
 
-                widthSlider.addChangeListener(new ChangeListener() {
-                    @Override
-                    public void stateChanged(ChangeEvent e) {
-                        board.setWidth(widthSlider.getValue());
-                        board.setupDefaultBoard(team1, team2);
-                        hexPanel.createHexes();
-                        hexPanel.repaint();
+                createTempSave();
 
-                        gameFrameDimension = calculateGameFrameDimension();
-                        gameFrame.setSize(calculateGameFrameDimension());
-                    }
+                widthSlider.addChangeListener(e -> {
+                    board.setWidth(widthSlider.getValue());
+                    board.setupDefaultBoard(team1, team2);
+                    hexPanel.createHexes();
+                    hexPanel.repaint();
+                    hexChex.setCurrentMove(team1);
+
+                    gameFrameDimension = calculateGameFrameDimension();
+                    gameFrame.setSize(calculateGameFrameDimension());
                 });
 
-                heightSlider.addChangeListener(new ChangeListener() {
-                    @Override
-                    public void stateChanged(ChangeEvent e) {
-                        board.setHeight(heightSlider.getValue());
-                        board.setupDefaultBoard(team1, team2);
-                        hexPanel.createHexes();
-                        hexPanel.repaint();
+                heightSlider.addChangeListener(e -> {
+                    board.setHeight(heightSlider.getValue());
+                    board.setupDefaultBoard(team1, team2);
+                    hexPanel.createHexes();
+                    hexPanel.repaint();
+                    hexChex.setCurrentMove(team1);
 
-                        gameFrameDimension = calculateGameFrameDimension();
-                        gameFrame.setSize(calculateGameFrameDimension());
-                    }
+                    gameFrameDimension = calculateGameFrameDimension();
+                    gameFrame.setSize(calculateGameFrameDimension());
                 });
 
-                confirmButton.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        Game resized = new Game(new HexChex(new Board(board.getWidth(), board.getHeight()), team1, team2));
+                confirmButton.addActionListener(e -> dispose());
+
+                cancelButton.addActionListener(e -> {
+                    try {
+                        FileInputStream fileIn = new FileInputStream(tempSaveDirectory.getPath() + "\\temp");
+                        ObjectInputStream objIn = new ObjectInputStream(fileIn);
+                        Game loaded = (Game) objIn.readObject();
+
                         gameFrame.dispose();
-                        dispose();
-                    }
-                });
 
-                cancelButton.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        Game reverted = new Game(new HexChex(new Board(WIDTH_INIT, HEIGHT_INIT), team1, team2));
-                        gameFrame.dispose();
+                        new Game(loaded.getHexChex());
+
+                        File tempSave = new File(tempSaveDirectory.getPath() + "\\temp");
+                        tempSave.delete();
+
                         dispose();
+                        System.out.println("Cached game restored!");
+
+                    } catch(IOException | ClassNotFoundException ex) {
+                        ex.printStackTrace();
                     }
                 });
 
@@ -525,7 +578,7 @@ public class Game implements Serializable {
         private NewGameFrame() {
             setTitle("New game");
             setLayout(new GridBagLayout());
-            setLocation(gameFrameCenterpoint);
+            setLocation(gameFrameCenter);
             setSize(500, 250);
             add(new NewGamePanel());
             setVisible(true);
@@ -543,26 +596,13 @@ public class Game implements Serializable {
                 add(editTeamButton);
                 add(startGameButton);
 
-                setBoardSizeButton.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        ResizeBoardFrame resizeBoardFrame = new ResizeBoardFrame();
-                    }
+                setBoardSizeButton.addActionListener(e -> {
+                    new ResizeBoardFrame();
                 });
 
-                editTeamButton.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        EditTeamFrame editTeamFrame = new EditTeamFrame();
-                    }
-                });
+                editTeamButton.addActionListener(e -> new EditTeamFrame());
 
-                startGameButton.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        dispose();
-                    }
-                });
+                startGameButton.addActionListener(e -> dispose());
 
             }
 
@@ -570,12 +610,12 @@ public class Game implements Serializable {
 
     }
 
-    class EditTeamFrame extends JFrame {
+    private class EditTeamFrame extends JFrame {
 
         private EditTeamFrame() {
             setTitle("Edit teams");
             setLayout(new GridBagLayout());
-            setLocation(gameFrameCenterpoint);
+            setLocation(gameFrameCenter);
             setSize(1750, 500);
 
             EditTeamPanel team1Panel = new EditTeamPanel(team1);
@@ -588,13 +628,10 @@ public class Game implements Serializable {
             add(team2Panel);
             add(confirmButton);
 
-            confirmButton.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    team1.setName(team1Panel.teamNameField.getText());
-                    team2.setName(team2Panel.teamNameField.getText());
-                    dispose();
-                }
+            confirmButton.addActionListener(e -> {
+                team1.setName(team1Panel.teamNameField.getText());
+                team2.setName(team2Panel.teamNameField.getText());
+                dispose();
             });
 
             setVisible(true);
@@ -645,6 +682,255 @@ public class Game implements Serializable {
 
         }
 
+    }
+
+    private class SaveGameFrame extends JFrame {
+
+        private SaveGameFrame() {
+            setTitle("Save game");
+            setLayout(new GridBagLayout());
+            setLocation(gameFrameCenter);
+            setSize(350, 100);
+
+            add(new SaveGamePanel());
+
+            setVisible(true);
+        }
+
+
+        private class SaveGamePanel extends JPanel {
+
+            private void createSave(String name) {
+                try {
+                    Game save = (Game) instance.clone();
+
+                    FileOutputStream fileOut = new FileOutputStream(saveDirectory.getPath() + "\\" + name);
+
+                    ObjectOutputStream objOut = new ObjectOutputStream(fileOut);
+                    objOut.writeObject(save);
+                    objOut.close();
+
+                    loadGame.setEnabled(true);
+
+                    System.out.println("Game saved");
+
+                } catch(IOException | CloneNotSupportedException ex) {
+                    ex.printStackTrace();
+                }
+            }
+
+            private SaveGamePanel() {
+
+                JTextField saveNameField = new JTextField();
+                JButton saveButton = new JButton("Save game");
+                JButton cancelButton = new JButton("Cancel");
+
+                add(saveNameField);
+                saveNameField.setColumns(10);
+
+                add(saveButton);
+                add(cancelButton);
+
+                saveButton.addActionListener(e -> {
+
+                    File[] existingSaves = saveDirectory.listFiles();
+                    final boolean[] saveComplete = {false};
+
+                    if (existingSaves != null) {
+                        for (File file : existingSaves) {
+                            if (file.getName().equalsIgnoreCase(saveNameField.getText())) {
+
+                                System.out.println("A save with that name already exists!");
+
+                                ActionListener overwrite = e1 -> {
+                                    file.delete();
+                                    createSave(saveNameField.getText());
+
+                                    System.out.println("Game saved!");
+                                    System.out.println(saveNameField.getText() + " has been overwritten!");
+
+                                    saveComplete[0] = true;
+                                    SaveGameFrame.super.dispose();
+                                };
+
+                                new ConfirmPrompt("A save with that name already exists. Overwrite?", overwrite, "Overwrite save");
+
+                            }
+                        }
+                    }
+
+                    if (!saveComplete[0]) {
+                        createSave(saveNameField.getText());
+                        SaveGameFrame.super.dispose();
+                    }
+
+                });
+
+                cancelButton.addActionListener(e -> SaveGameFrame.super.dispose());
+
+            }
+
+        }
+
+    }
+
+    private class LoadGameFrame extends JFrame {
+
+        private LoadGameFrame() {
+            setTitle("Load game");
+            setLayout(new GridBagLayout());
+            setLocation(gameFrameCenter);
+            setSize(350, 250);
+
+            add(new LoadGamePanel());
+
+            setVisible(true);
+        }
+
+        private class LoadGamePanel extends JPanel {
+
+            DefaultMutableTreeNode rootNode = new DefaultMutableTreeNode("Saves");
+            DefaultTreeModel treeModel = new DefaultTreeModel(rootNode);
+            String newGameName;
+
+            FileInputStream gameToLoad;
+            JButton loadButton = new JButton("Load game");
+            JButton cancelButton = new JButton("Cancel");
+
+            private LoadGamePanel() {
+
+
+                for (File file : Objects.requireNonNull(saveDirectory.listFiles())) {
+                    DefaultMutableTreeNode saveNode = new DefaultMutableTreeNode(file.getName());
+                    rootNode.add(saveNode);
+                }
+
+                JTree gameSaves = new JTree(treeModel);
+
+                gameSaves.setRootVisible(false);
+
+                add(gameSaves);
+                add(loadButton);
+                loadButton.setEnabled(false);
+                add(cancelButton);
+
+                gameSaves.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+
+                gameSaves.addTreeSelectionListener(e -> {
+
+                    DefaultMutableTreeNode node = (DefaultMutableTreeNode) gameSaves.getLastSelectedPathComponent();
+                    File nodeFile = new File(saveDirectory + "\\" + node.getUserObject());
+                    newGameName = (String) node.getUserObject();
+
+                    try {
+                        gameToLoad =  new FileInputStream(nodeFile.getPath());
+                        loadButton.setEnabled(true);
+                    } catch(FileNotFoundException ex) {
+                        ex.printStackTrace();
+                    }
+
+                });
+
+
+                loadButton.addActionListener(e -> {
+                    try {
+                        ObjectInputStream objIn = new ObjectInputStream(gameToLoad);
+                        Game loaded = (Game) objIn.readObject();
+
+                        gameFrame.dispose();
+                        LoadGameFrame.super.dispose();
+
+                        loaded.getHexChex().setGameName(newGameName);
+                        new Game(loaded.getHexChex());
+
+                        System.out.println("Game loaded");
+                    } catch(IOException | ClassNotFoundException ex) {
+                        ex.printStackTrace();
+                    }
+                });
+
+                cancelButton.addActionListener(e -> LoadGameFrame.super.dispose());
+
+            }
+
+
+        }
+
+    }
+
+    private class ConfirmPrompt extends JFrame {
+
+        JLabel messageLabel = new JLabel();
+        JButton confirmButton = new JButton("Confirm");
+        JButton cancelButton = new JButton("Cancel");
+
+        private ConfirmPrompt(String message, ActionListener confirmTask, String title) {
+            setTitle(title);
+            setLocation(gameFrameCenter);
+            setSize(350, 100);
+
+            ComfirmPromptPanel confirmPanel = new ComfirmPromptPanel(message, confirmTask);
+
+            add(confirmPanel);
+            this.pack();
+
+            setVisible(true);
+        }
+
+        private ConfirmPrompt(String message, String confirmText, ActionListener confirmTask, String title) {
+            this(message, confirmTask, title);
+            confirmButton.setText(confirmText);
+        }
+
+        private class ComfirmPromptPanel extends JPanel {
+
+            private ComfirmPromptPanel(String message, ActionListener confirmTask) {
+                messageLabel.setText(message);
+
+                add(messageLabel);
+                add(confirmButton);
+                add(cancelButton);
+
+                confirmButton.addActionListener(confirmTask);
+                confirmButton.addActionListener(e -> ConfirmPrompt.super.dispose());
+                cancelButton.addActionListener(e -> ConfirmPrompt.super.dispose());
+            }
+
+        }
+    }
+
+    class NotificationPrompt extends JFrame {
+
+        private NotificationPrompt(String message) {
+            setLocation(gameFrameCenter);
+            setSize(350, 100);
+
+            NotificationPanel notificationPanel = new NotificationPanel(message);
+
+            add(notificationPanel);
+            this.pack();
+
+            setVisible(true);
+        }
+
+        private NotificationPrompt(String message, String title) {
+            this(message);
+            setTitle(title);
+        }
+
+        class NotificationPanel extends JPanel {
+
+            private NotificationPanel(String message) {
+                JLabel messageLabel = new JLabel(message);
+                JButton okButton = new JButton("OK");
+
+                add(messageLabel);
+                add(okButton);
+
+                okButton.addActionListener(e -> NotificationPrompt.super.dispose());
+            }
+
+        }
     }
 
 }

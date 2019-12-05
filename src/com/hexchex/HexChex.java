@@ -11,12 +11,31 @@ public class HexChex implements Serializable {
 
     private Board board;
     private Team team1, team2;
+    private String gameName;
+    private Team currentMove;
+
+    public String getGameName() {
+        return gameName;
+    }
+
+    public void setGameName(String gameName) {
+        this.gameName = gameName;
+    }
+
+    public Team getCurrentMove() {
+        return currentMove;
+    }
+
+    public void setCurrentMove(Team currentMove) {
+        this.currentMove = currentMove;
+    }
 
     public HexChex(Board board, Team team1, Team team2) {
         this.board = board;
         this.team1 = team1;
         this.team2 = team2;
         board.setupDefaultBoard(team1, team2);
+        currentMove = team1;
     }
 
     public Board getBoard() {
@@ -35,7 +54,7 @@ public class HexChex implements Serializable {
 
     public static void main(String[] args) {
 
-        Board board = new Board(9, 8);
+        Board board = new Board(8, 8);
         Team white = new Team("White", new Color(225, 220, 200));
         Team black = new Team("Black", new Color(35, 25, 25));
 
@@ -43,7 +62,7 @@ public class HexChex implements Serializable {
 
         System.out.println(board);
 
-        Game game = new Game(hexChex);
+        new Game(hexChex);
 
     }
 

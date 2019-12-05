@@ -35,7 +35,7 @@ public class Board implements Serializable {
      * a hexagonal cell structure.
      * @return a staggered board of EmptyCell objects with appropriate row and column values
      */
-    public Cell[][] generateBoard() {
+    private Cell[][] generateBoard() {
 
         board = new Cell[height * 2][width];
         int cellIDCounter = 0;
@@ -78,6 +78,10 @@ public class Board implements Serializable {
 
     public Cell[][] getBoard() {
         return board;
+    }
+    
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
     }
 
     public Cell findCell(Cell other) throws IllegalMoveException {
