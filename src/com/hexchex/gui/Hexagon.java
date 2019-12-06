@@ -6,7 +6,7 @@ import java.awt.*;
 
 public class Hexagon extends Polygon {
 
-    public static final int SIDES = 6;
+    private static final int SIDES = 6;
 
     private Point[] points = new Point[SIDES];
     private Point center;
@@ -15,7 +15,6 @@ public class Hexagon extends Polygon {
 
     private Color color;
     private Color defaultColor;
-    private Color hoverColor = Color.GREEN;
     private Color selectedColor = new Color(200, 200, 100);
 
     private Cell cell;
@@ -54,10 +53,6 @@ public class Hexagon extends Polygon {
 
     public void setToDefaultColor() {
         color = defaultColor;
-    }
-
-    public void setToHoverColor() {
-        color = hoverColor;
     }
 
     public void setToSelectedColor() {
@@ -117,32 +112,14 @@ public class Hexagon extends Polygon {
         return new Point(x, y);
     }
 
-    protected void updatePoints() {
+    private void updatePoints() {
         for (int p = 0; p < SIDES; p++) {
             double angle = findAngle((double) p / SIDES);
             Point point = findPoint(angle);
             xpoints[p] = point.x;
             ypoints[p] = point.y;
             points[p] = point;
-            //System.out.printf("%d. (%d, %d)\n", p, point.x, point.y);
         }
-    }
-
-    public void drawPolygon(Graphics2D g, int x, int y, int lineThickness, int colorValue, boolean filled) {
-
-        Stroke tmpS = g.getStroke();
-        Color tmpC = g.getColor();
-
-        g.setColor(new Color(colorValue));
-        g.setStroke(new BasicStroke(lineThickness, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER));
-
-        if (filled)
-            g.fillPolygon(xpoints, ypoints, npoints);
-        else
-            g.drawPolygon(xpoints, ypoints, npoints);
-
-        g.setColor(tmpC);
-        g.setStroke(tmpS);
     }
 
 }

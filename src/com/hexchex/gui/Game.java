@@ -7,9 +7,9 @@ import com.hexchex.engine.pieces.Piece;
 import com.hexchex.engine.pieces.Team;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import javax.swing.tree.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeSelectionModel;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -22,45 +22,72 @@ public class Game implements Serializable, Cloneable {
 
     private static final long serialVersionUID = 12345L;
 
-    public static Game getInstance() {
-        return instance;
-    }
-
     public Object clone() throws CloneNotSupportedException {
         return super.clone();
     }
 
     private static Game instance;
     private static final File saveDirectory = new File("src/saves");
-    private  JFrame gameFrame;
+    private static final File cacheDirectory = new File("src/cache");
+    private JFrame gameFrame;
     private Point gameFrameCenter;
     private HexPanel hexPanel;
-    private GameMessagePanel messagePanel;
-    private JLabel currentMessageDisplay;
 
     private boolean gameEnded = false;
     private Team winningTeam;
-    private String currentMessage = "";
     private Hexagon sourceHex, destinationHex;
     private Piece pieceToMove;
 
-    public HexChex getHexChex() {
+    private HexChex getHexChex() {
         return hexChex;
     }
 
     private HexChex hexChex;
     private Board board;
     private Team team1, team2;
-    private String gameName;
 
     private Dimension gameFrameDimension;
+
     private Dimension calculateGameFrameDimension() {
-        return new Dimension(board.getWidth() * 100,
-                board.getHeight() * 100 + 125);
+        return new Dimension(board.getWidth() * 70,
+                board.getHeight() * 70 + (3 * 35));
     }
 
-    private void setGameName(String gameName) {
-        this.gameName = gameName;
+    private void cacheGame() {
+        try {
+            Game save = (Game) instance.clone();
+
+            FileOutputStream fileOut = new FileOutputStream(cacheDirectory.getPath() + "\\temp");
+            ObjectOutputStream objOut = new ObjectOutputStream(fileOut);
+
+            objOut.writeObject(save);
+            objOut.close();
+
+            System.out.println("Current game has been cached!");
+
+        } catch(IOException | CloneNotSupportedException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void loadCachedGame() {
+        try {
+            FileInputStream fileIn = new FileInputStream(cacheDirectory.getPath() + "\\temp");
+            ObjectInputStream objIn = new ObjectInputStream(fileIn);
+            Game loaded = (Game) objIn.readObject();
+
+            gameFrame.dispose();
+
+            new Game(loaded.getHexChex());
+
+            File tempSave = new File(cacheDirectory.getPath() + "\\temp");
+            tempSave.delete();
+
+            System.out.println("Cached game restored!");
+
+        } catch(IOException | ClassNotFoundException ex) {
+            ex.printStackTrace();
+        }
     }
 
     public Game(HexChex hexChex) {
@@ -72,12 +99,11 @@ public class Game implements Serializable, Cloneable {
         board = hexChex.getBoard();
         team1 = hexChex.getTeam1();
         team2 = hexChex.getTeam2();
-        gameName = hexChex.getGameName();
 
         gameFrame = new JFrame("HexChex");
 
-        if (gameName != null) {
-            gameFrame.setTitle("HexChex - " + gameName);
+        if (hexChex.getGameName() != null) {
+            gameFrame.setTitle("HexChex - " + hexChex.getGameName());
         }
 
         gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -85,8 +111,7 @@ public class Game implements Serializable, Cloneable {
         gameFrame.setSize(gameFrameDimension);
         BorderLayout gameFrameLayout = new BorderLayout();
         gameFrame.setLayout(gameFrameLayout);
-        gameFrameCenter = new Point(gameFrame.getSize().width / 3, gameFrame.getSize().height / 3);
-        gameFrame.setLayout(new BorderLayout());
+        gameFrameCenter = new Point(gameFrame.getSize().width / 4, gameFrame.getSize().height / 4);
         gameFrame.setResizable(false);
 
         final JMenuBar gameMenuBar = createGameMenuBar();
@@ -94,9 +119,6 @@ public class Game implements Serializable, Cloneable {
 
         hexPanel = new HexPanel();
         HexSelector selector = new HexSelector(hexPanel);
-        GameMessagePanel messagePanel = new GameMessagePanel();
-        currentMessageDisplay  = new JLabel();
-        messagePanel.add(currentMessageDisplay);
 
         hexPanel.addMouseListener(selector);
         hexPanel.addMouseListener(new MouseAdapter() {
@@ -121,13 +143,7 @@ public class Game implements Serializable, Cloneable {
 
         });
 
-        gameFrame.add(messagePanel, BorderLayout.PAGE_START);
-        messagePanel.setSize(gameFrame.getSize().width, 100);
-
-        gameFrame.add(hexPanel, BorderLayout.CENTER);
-        hexPanel.setPreferredSize(gameFrame.getSize());
-
-        gameFrame.pack();
+        gameFrame.add(hexPanel);
 
         gameFrame.setVisible(true);
     }
@@ -174,10 +190,11 @@ public class Game implements Serializable, Cloneable {
 
         saveGame.addActionListener(e -> new SaveGameFrame());
 
-        loadGame.addActionListener(e -> new LoadGameFrame());
         if (saveDirectory.listFiles() == null) {
             loadGame.setEnabled(false);
         }
+        loadGame.addActionListener(e -> new LoadGameFrame());
+
 
         final JMenuItem deleteSaves = new JMenuItem("Delete saved games");
         deleteSaves.addActionListener(e -> {
@@ -215,6 +232,9 @@ public class Game implements Serializable, Cloneable {
 
     public class HexPanel extends JPanel {
 
+        Color boardColor = Color.DARK_GRAY;
+        Color backgroundColor = Color.LIGHT_GRAY;
+
         private HexPanel() {
             createHexes();
         }
@@ -222,8 +242,7 @@ public class Game implements Serializable, Cloneable {
         ArrayList<Hexagon> hexList = new ArrayList<>();
 
         private void createHexes() {
-
-            int hexRadius = 50;
+            int hexRadius = 35;
             hexList.clear();
 
             for(int row = 0; row < board.getBoard().length; row++) {
@@ -232,9 +251,9 @@ public class Game implements Serializable, Cloneable {
                     if (col % 2 == 0) {
                         if (row % 2 == 0) {
 
-                            Point hexCenter = new Point(col * 80 + (2 * hexRadius), row * 46 + (2 * hexRadius));
+                            Point hexCenter = new Point(col * 55 + (2 * hexRadius), row * 32 + (2 * hexRadius));
                             Hexagon hex = new Hexagon(hexCenter, hexRadius, board.getBoard()[row][col]);
-                            hex.setDefaultColor(Color.DARK_GRAY);
+                            hex.setDefaultColor(boardColor);
                             hex.setToDefaultColor();
 
                             hexList.add(hex);
@@ -243,9 +262,9 @@ public class Game implements Serializable, Cloneable {
 
                     } else if (row % 2 != 0) {
 
-                        Point hexCenter = new Point(col * 80 + (2 * hexRadius), row * 46 + (2 * hexRadius));
+                        Point hexCenter = new Point(col * 55 + (2 * hexRadius), row * 32 + (2 * hexRadius));
                         Hexagon hex = new Hexagon(hexCenter, hexRadius, board.getBoard()[row][col]);
-                        hex.setDefaultColor(Color.DARK_GRAY);
+                        hex.setDefaultColor(boardColor);
                         hex.setToDefaultColor();
 
                         hexList.add(hex);
@@ -263,22 +282,16 @@ public class Game implements Serializable, Cloneable {
          */
         @Override
         public void paintComponent(Graphics g) {
-           paintComponent((Graphics2D)g);
+            paintComponent((Graphics2D) g);
         }
 
         private void paintComponent(Graphics2D g) {
             super.paintComponent(g);
 
-            int pieceRadius = 60;
-            setBackground(Color.LIGHT_GRAY);
-            Color boardColor = Color.DARK_GRAY;
+            int pieceRadius = 45;
+            setBackground(backgroundColor);
 
-           /* g.setColor(new Color(200, 150, 100));
-            g.setColor(new Color(100, 70, 30));
-            g.setColor(new Color(150, 100, 50));
-            g.setColor(new Color(75, 50, 30));*/
-
-            for (Hexagon hex : hexList) {
+            for(Hexagon hex : hexList) {
                 g.setColor(hex.getColor());
                 g.fillPolygon(hex);
                 g.setColor(boardColor);
@@ -286,7 +299,6 @@ public class Game implements Serializable, Cloneable {
                 if (hex.getCell().isOccupied()) {
                     Color tmpC = g.getColor();
                     Stroke tmpS = g.getStroke();
-
 
                     Color color = hex.getCell().getPiece().getTeam().getColor();
                     g.setColor(color);
@@ -386,7 +398,6 @@ public class Game implements Serializable, Cloneable {
                                         gameEnded = true;
                                         new EndScreenFrame();
                                     }
-                                    //messagePanel.pieceMoved(sourceHex.getCell(), destinationHex.getCell());
 
                                     if (hexChex.getCurrentMove() == team1) {
                                         hexChex.setCurrentMove(team2);
@@ -425,29 +436,21 @@ public class Game implements Serializable, Cloneable {
         }
     }
 
-    private class GameMessagePanel extends JPanel {
-
-        void pieceMoved(Cell startCell, Cell endCell) {
-            currentMessage = endCell.getPiece().getTeam().getName() + " moved from ("
-                            + startCell.col() + ", " + startCell.row() + ") to ("
-                            + endCell.col() + ", " + endCell.row() + ").";
-            currentMessageDisplay.setText(currentMessage);
-        }
-
-        @Override
-        public void paintComponent(Graphics g) {
-            g.setColor(Color.RED);
-            g.drawString(currentMessage, 100, 0);
-        }
-
-    }
-
     private class EndScreenFrame extends JFrame {
 
         private EndScreenFrame() {
-            setSize(250,100);
+
+            addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    gameFrame.setEnabled(true);
+                }
+            });
+
+            setTitle(winningTeam.getName() + " wins!");
             setLocation(gameFrameCenter);
             add(new EndScreenPanel());
+            pack();
             setVisible(true);
         }
 
@@ -468,7 +471,12 @@ public class Game implements Serializable, Cloneable {
                     new Game(new HexChex(new Board(board.getWidth(), board.getHeight()), team1, team2));
                 });
 
-                newGameButton.addActionListener(e -> new ResizeBoardFrame());
+                newGameButton.addActionListener(e -> {
+                    new NewGameFrame();
+                    EndScreenFrame.super.dispose();
+                });
+
+                gameFrame.setEnabled(false);
             }
         }
 
@@ -477,12 +485,22 @@ public class Game implements Serializable, Cloneable {
     private class ResizeBoardFrame extends JFrame {
 
         private ResizeBoardFrame() {
+
+            addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    gameFrame.setEnabled(true);
+                }
+            });
+
             setTitle("Resize board");
             setLayout(new GridBagLayout());
             setLocation(gameFrameCenter);
             add(new ResizeInputPanel());
             pack();
             setVisible(true);
+
+            gameFrame.setEnabled(false);
         }
 
         class ResizeInputPanel extends JPanel {
@@ -491,29 +509,11 @@ public class Game implements Serializable, Cloneable {
             static final int DIM_MAX = 16;
             final int WIDTH_INIT = board.getWidth();
             final int HEIGHT_INIT = board.getHeight();
-            final File tempSaveDirectory = new File("src/cache");
 
             JSlider widthSlider = new JSlider(JSlider.HORIZONTAL, DIM_MIN, DIM_MAX, WIDTH_INIT);
             JSlider heightSlider = new JSlider(JSlider.VERTICAL, DIM_MIN, DIM_MAX, HEIGHT_INIT);
             JButton confirmButton = new JButton("Confirm");
             JButton cancelButton = new JButton("Cancel");
-
-            private void createTempSave() {
-                try {
-                    Game save = (Game) instance.clone();
-
-                    FileOutputStream fileOut = new FileOutputStream(tempSaveDirectory.getPath() + "\\temp");
-                    ObjectOutputStream objOut = new ObjectOutputStream(fileOut);
-
-                    objOut.writeObject(save);
-                    objOut.close();
-
-                    System.out.println("Current game has been cached!");
-
-                } catch(IOException | CloneNotSupportedException ex) {
-                    ex.printStackTrace();
-                }
-            }
 
             private ResizeInputPanel() {
 
@@ -522,7 +522,7 @@ public class Game implements Serializable, Cloneable {
                 add(confirmButton);
                 add(cancelButton);
 
-                createTempSave();
+                cacheGame();
 
                 widthSlider.addChangeListener(e -> {
                     board.setWidth(widthSlider.getValue());
@@ -546,27 +546,13 @@ public class Game implements Serializable, Cloneable {
                     gameFrame.setSize(calculateGameFrameDimension());
                 });
 
-                confirmButton.addActionListener(e -> dispose());
+                confirmButton.addActionListener(e -> {
+                    gameFrame.setEnabled(true);
+                    dispose();
+                });
 
                 cancelButton.addActionListener(e -> {
-                    try {
-                        FileInputStream fileIn = new FileInputStream(tempSaveDirectory.getPath() + "\\temp");
-                        ObjectInputStream objIn = new ObjectInputStream(fileIn);
-                        Game loaded = (Game) objIn.readObject();
-
-                        gameFrame.dispose();
-
-                        new Game(loaded.getHexChex());
-
-                        File tempSave = new File(tempSaveDirectory.getPath() + "\\temp");
-                        tempSave.delete();
-
-                        dispose();
-                        System.out.println("Cached game restored!");
-
-                    } catch(IOException | ClassNotFoundException ex) {
-                        ex.printStackTrace();
-                    }
+                    loadCachedGame();
                 });
 
             }
@@ -576,11 +562,19 @@ public class Game implements Serializable, Cloneable {
     private class NewGameFrame extends JFrame {
 
         private NewGameFrame() {
+
+            addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    gameFrame.setEnabled(true);
+                }
+            });
+
             setTitle("New game");
             setLayout(new GridBagLayout());
             setLocation(gameFrameCenter);
-            setSize(500, 250);
             add(new NewGamePanel());
+            pack();
             setVisible(true);
         }
 
@@ -589,12 +583,14 @@ public class Game implements Serializable, Cloneable {
             JButton setBoardSizeButton = new JButton("Set board size");
             JButton editTeamButton = new JButton("Edit teams");
             JButton startGameButton = new JButton("Start game");
+            JButton newDefaultGameButton = new JButton("New default game");
 
             private NewGamePanel() {
 
                 add(setBoardSizeButton);
                 add(editTeamButton);
                 add(startGameButton);
+                add(newDefaultGameButton);
 
                 setBoardSizeButton.addActionListener(e -> {
                     new ResizeBoardFrame();
@@ -602,7 +598,21 @@ public class Game implements Serializable, Cloneable {
 
                 editTeamButton.addActionListener(e -> new EditTeamFrame());
 
-                startGameButton.addActionListener(e -> dispose());
+                startGameButton.addActionListener(e -> {
+                    if (gameEnded) {
+                        NewGameFrame.super.dispose();
+                        gameFrame.dispose();
+                        new Game(new HexChex(new Board(board.getWidth(), board.getHeight()), team1, team2));
+                    } else {
+                        NewGameFrame.super.dispose();
+                    }
+                });
+
+                newDefaultGameButton.addActionListener(e -> {
+                    dispose();
+                    gameFrame.dispose();
+                    new Game(new HexChex());
+                });
 
             }
 
@@ -613,6 +623,16 @@ public class Game implements Serializable, Cloneable {
     private class EditTeamFrame extends JFrame {
 
         private EditTeamFrame() {
+
+            cacheGame();
+
+            addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    gameFrame.setEnabled(true);
+                }
+            });
+
             setTitle("Edit teams");
             setLayout(new GridBagLayout());
             setLocation(gameFrameCenter);
@@ -623,36 +643,37 @@ public class Game implements Serializable, Cloneable {
             EditTeamPanel team2Panel = new EditTeamPanel(team2);
 
             JButton confirmButton = new JButton("Confirm");
+            JButton cancelButton = new JButton("Cancel");
 
             add(team1Panel);
             add(team2Panel);
             add(confirmButton);
+            add(cancelButton);
 
             confirmButton.addActionListener(e -> {
                 team1.setName(team1Panel.teamNameField.getText());
                 team2.setName(team2Panel.teamNameField.getText());
+                gameFrame.setEnabled(true);
+                dispose();
+            });
+
+            cancelButton.addActionListener(e -> {
+                loadCachedGame();
                 dispose();
             });
 
             setVisible(true);
+            pack();
+            gameFrame.setEnabled(false);
         }
 
         class EditTeamPanel extends JPanel {
-
-            private Team team;
 
             JColorChooser teamColorChooser;
             JLabel teamNameLabel = new JLabel("Team name");
             JTextField teamNameField;
 
-
-            void setTeam(Team team) {
-                this.team = team;
-            }
-
             private EditTeamPanel(Team team) {
-
-                this.team = team;
 
                 setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 
@@ -663,20 +684,12 @@ public class Game implements Serializable, Cloneable {
                 add(teamNameLabel);
                 add(teamNameField);
 
-                teamColorChooser.getSelectionModel().addChangeListener(new ChangeListener() {
-                    @Override
-                    public void stateChanged(ChangeEvent e) {
-                        team.setColor(teamColorChooser.getColor());
-                        hexPanel.repaint();
-                    }
+                teamColorChooser.getSelectionModel().addChangeListener(e -> {
+                    team.setColor(teamColorChooser.getColor());
+                    hexPanel.repaint();
                 });
 
-                teamNameField.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        team.setName(teamNameField.getText());
-                    }
-                });
+                teamNameField.addActionListener(e -> team.setName(teamNameField.getText()));
 
             }
 
@@ -687,14 +700,23 @@ public class Game implements Serializable, Cloneable {
     private class SaveGameFrame extends JFrame {
 
         private SaveGameFrame() {
+
+            addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    gameFrame.setEnabled(true);
+                }
+            });
+
             setTitle("Save game");
             setLayout(new GridBagLayout());
             setLocation(gameFrameCenter);
-            setSize(350, 100);
 
             add(new SaveGamePanel());
+            pack();
 
             setVisible(true);
+            gameFrame.setEnabled(false);
         }
 
 
@@ -704,7 +726,8 @@ public class Game implements Serializable, Cloneable {
                 try {
                     Game save = (Game) instance.clone();
 
-                    FileOutputStream fileOut = new FileOutputStream(saveDirectory.getPath() + "\\" + name);
+                    FileOutputStream fileOut = new FileOutputStream
+                            (saveDirectory.getPath() + "\\" + name);
 
                     ObjectOutputStream objOut = new ObjectOutputStream(fileOut);
                     objOut.writeObject(save);
@@ -713,6 +736,7 @@ public class Game implements Serializable, Cloneable {
                     loadGame.setEnabled(true);
 
                     System.out.println("Game saved");
+                    gameFrame.setEnabled(true);
 
                 } catch(IOException | CloneNotSupportedException ex) {
                     ex.printStackTrace();
@@ -722,6 +746,7 @@ public class Game implements Serializable, Cloneable {
             private SaveGamePanel() {
 
                 JTextField saveNameField = new JTextField();
+                saveNameField.setText("Game" + Objects.requireNonNull(saveDirectory.listFiles()).length);
                 JButton saveButton = new JButton("Save game");
                 JButton cancelButton = new JButton("Cancel");
 
@@ -737,7 +762,7 @@ public class Game implements Serializable, Cloneable {
                     final boolean[] saveComplete = {false};
 
                     if (existingSaves != null) {
-                        for (File file : existingSaves) {
+                        for(File file : existingSaves) {
                             if (file.getName().equalsIgnoreCase(saveNameField.getText())) {
 
                                 System.out.println("A save with that name already exists!");
@@ -751,6 +776,7 @@ public class Game implements Serializable, Cloneable {
 
                                     saveComplete[0] = true;
                                     SaveGameFrame.super.dispose();
+
                                 };
 
                                 new ConfirmPrompt("A save with that name already exists. Overwrite?", overwrite, "Overwrite save");
@@ -764,9 +790,14 @@ public class Game implements Serializable, Cloneable {
                         SaveGameFrame.super.dispose();
                     }
 
+                    gameFrame.setEnabled(true);
+
                 });
 
-                cancelButton.addActionListener(e -> SaveGameFrame.super.dispose());
+                cancelButton.addActionListener(e -> {
+                    gameFrame.setEnabled(true);
+                    SaveGameFrame.super.dispose();
+                });
 
             }
 
@@ -777,14 +808,22 @@ public class Game implements Serializable, Cloneable {
     private class LoadGameFrame extends JFrame {
 
         private LoadGameFrame() {
+
+            addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    gameFrame.setEnabled(true);
+                }
+            });
+
             setTitle("Load game");
             setLayout(new GridBagLayout());
             setLocation(gameFrameCenter);
-            setSize(350, 250);
 
             add(new LoadGamePanel());
-
+            pack();
             setVisible(true);
+            gameFrame.setEnabled(false);
         }
 
         private class LoadGamePanel extends JPanel {
@@ -799,8 +838,7 @@ public class Game implements Serializable, Cloneable {
 
             private LoadGamePanel() {
 
-
-                for (File file : Objects.requireNonNull(saveDirectory.listFiles())) {
+                for(File file : Objects.requireNonNull(saveDirectory.listFiles())) {
                     DefaultMutableTreeNode saveNode = new DefaultMutableTreeNode(file.getName());
                     rootNode.add(saveNode);
                 }
@@ -823,7 +861,7 @@ public class Game implements Serializable, Cloneable {
                     newGameName = (String) node.getUserObject();
 
                     try {
-                        gameToLoad =  new FileInputStream(nodeFile.getPath());
+                        gameToLoad = new FileInputStream(nodeFile.getPath());
                         loadButton.setEnabled(true);
                     } catch(FileNotFoundException ex) {
                         ex.printStackTrace();
@@ -849,10 +887,12 @@ public class Game implements Serializable, Cloneable {
                     }
                 });
 
-                cancelButton.addActionListener(e -> LoadGameFrame.super.dispose());
+                cancelButton.addActionListener(e -> {
+                    gameFrame.setEnabled(true);
+                    LoadGameFrame.super.dispose();
+                });
 
             }
-
 
         }
 
@@ -865,16 +905,25 @@ public class Game implements Serializable, Cloneable {
         JButton cancelButton = new JButton("Cancel");
 
         private ConfirmPrompt(String message, ActionListener confirmTask, String title) {
+
+            addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    gameFrame.setEnabled(true);
+                }
+            });
+
             setTitle(title);
             setLocation(gameFrameCenter);
             setSize(350, 100);
 
-            ComfirmPromptPanel confirmPanel = new ComfirmPromptPanel(message, confirmTask);
+            ConfirmPromptPanel confirmPanel = new ConfirmPromptPanel(message, confirmTask);
 
             add(confirmPanel);
             this.pack();
 
             setVisible(true);
+            gameFrame.setEnabled(false);
         }
 
         private ConfirmPrompt(String message, String confirmText, ActionListener confirmTask, String title) {
@@ -882,9 +931,9 @@ public class Game implements Serializable, Cloneable {
             confirmButton.setText(confirmText);
         }
 
-        private class ComfirmPromptPanel extends JPanel {
+        private class ConfirmPromptPanel extends JPanel {
 
-            private ComfirmPromptPanel(String message, ActionListener confirmTask) {
+            private ConfirmPromptPanel(String message, ActionListener confirmTask) {
                 messageLabel.setText(message);
 
                 add(messageLabel);
@@ -892,16 +941,30 @@ public class Game implements Serializable, Cloneable {
                 add(cancelButton);
 
                 confirmButton.addActionListener(confirmTask);
-                confirmButton.addActionListener(e -> ConfirmPrompt.super.dispose());
-                cancelButton.addActionListener(e -> ConfirmPrompt.super.dispose());
-            }
+                confirmButton.addActionListener(e -> {
+                    gameFrame.setEnabled(true);
+                    ConfirmPrompt.super.dispose();
+                });
+                cancelButton.addActionListener(e -> {
+                    gameFrame.setEnabled(true);
+                    ConfirmPrompt.super.dispose();
+                });
 
+            }
         }
     }
 
     class NotificationPrompt extends JFrame {
 
         private NotificationPrompt(String message) {
+
+            addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    gameFrame.setEnabled(true);
+                }
+            });
+
             setLocation(gameFrameCenter);
             setSize(350, 100);
 
@@ -927,12 +990,17 @@ public class Game implements Serializable, Cloneable {
                 add(messageLabel);
                 add(okButton);
 
-                okButton.addActionListener(e -> NotificationPrompt.super.dispose());
+                okButton.addActionListener(e -> {
+                    gameFrame.setEnabled(true);
+                    NotificationPrompt.super.dispose();
+                });
             }
 
         }
     }
 
 }
+
+
 
 
