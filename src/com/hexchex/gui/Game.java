@@ -191,9 +191,11 @@ public class Game implements Serializable, Cloneable {
 
         saveGame.addActionListener(e -> new SaveGameFrame());
 
-        if (saveDirectory.listFiles() == null) {
-            loadGame.setEnabled(false);
+        loadGame.setEnabled(false);
+        if (Objects.requireNonNull(saveDirectory.listFiles()).length > 0) {
+            loadGame.setEnabled(true);
         }
+
         loadGame.addActionListener(e -> new LoadGameFrame());
 
 
