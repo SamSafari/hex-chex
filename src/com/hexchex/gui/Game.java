@@ -7,6 +7,7 @@ import com.hexchex.engine.pieces.Piece;
 import com.hexchex.engine.pieces.Team;
 
 import javax.swing.*;
+import javax.swing.colorchooser.AbstractColorChooserPanel;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeSelectionModel;
@@ -596,7 +597,9 @@ public class Game implements Serializable, Cloneable {
                     new ResizeBoardFrame();
                 });
 
-                editTeamButton.addActionListener(e -> new EditTeamFrame());
+                editTeamButton.addActionListener(e -> {
+                    new EditTeamFrame();
+                });
 
                 startGameButton.addActionListener(e -> {
                     if (gameEnded) {
@@ -634,9 +637,13 @@ public class Game implements Serializable, Cloneable {
             });
 
             setTitle("Edit teams");
-            setLayout(new GridBagLayout());
+
+            JPanel verticalHolderPanel = new JPanel();
+            JPanel horizontalHolderPanel = new JPanel();
+
+            verticalHolderPanel.setLayout(new BoxLayout(verticalHolderPanel, BoxLayout.Y_AXIS));
+
             setLocation(gameFrameCenter);
-            setSize(1750, 500);
 
             EditTeamPanel team1Panel = new EditTeamPanel(team1);
 
@@ -645,10 +652,14 @@ public class Game implements Serializable, Cloneable {
             JButton confirmButton = new JButton("Confirm");
             JButton cancelButton = new JButton("Cancel");
 
-            add(team1Panel);
-            add(team2Panel);
-            add(confirmButton);
-            add(cancelButton);
+            add(verticalHolderPanel);
+
+            verticalHolderPanel.add(team1Panel);
+            verticalHolderPanel.add(team2Panel);
+            verticalHolderPanel.add(horizontalHolderPanel);
+
+            horizontalHolderPanel.add(confirmButton);
+            horizontalHolderPanel.add(cancelButton);
 
             confirmButton.addActionListener(e -> {
                 team1.setName(team1Panel.teamNameField.getText());
@@ -673,12 +684,21 @@ public class Game implements Serializable, Cloneable {
             JLabel teamNameLabel = new JLabel("Team name");
             JTextField teamNameField;
 
-            private EditTeamPanel(Team team) {
+            private EditTeamPanel(Team team)  {
 
                 setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 
                 teamNameField = new JTextField(team.getName());
                 teamColorChooser = new JColorChooser(team.getColor());
+
+                AbstractColorChooserPanel[] panels = teamColorChooser.getChooserPanels();
+                for (AbstractColorChooserPanel panel : panels) {
+                    if (!panel.getDisplayName().equals("HSV")) {
+                        teamColorChooser.removeChooserPanel(panel);
+                    }
+                }
+
+                teamColorChooser.setPreviewPanel(new JPanel());
 
                 add(teamColorChooser);
                 add(teamNameLabel);
@@ -688,8 +708,6 @@ public class Game implements Serializable, Cloneable {
                     team.setColor(teamColorChooser.getColor());
                     hexPanel.repaint();
                 });
-
-                teamNameField.addActionListener(e -> team.setName(teamNameField.getText()));
 
             }
 
