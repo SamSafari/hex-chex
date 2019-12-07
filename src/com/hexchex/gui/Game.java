@@ -15,6 +15,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.Objects;
 
 import static javax.swing.SwingUtilities.*;
@@ -182,6 +183,7 @@ public class Game implements Serializable, Cloneable {
     private final JMenuItem loadGame = new JMenuItem("Load game");
     private final JMenuItem newGame = new JMenuItem("New game");
     private final JMenuItem saveGame = new JMenuItem("Save game");
+    final JMenuItem deleteSaves = new JMenuItem("Delete saved games");
 
 
     private JMenu createFileMenu() {
@@ -191,15 +193,18 @@ public class Game implements Serializable, Cloneable {
 
         saveGame.addActionListener(e -> new SaveGameFrame());
 
-        loadGame.setEnabled(false);
+
+
         if (Objects.requireNonNull(saveDirectory.listFiles()).length > 0) {
             loadGame.setEnabled(true);
+            deleteSaves.setEnabled(true);
+        } else {
+            loadGame.setEnabled(false);
+            deleteSaves.setEnabled(false);
         }
 
         loadGame.addActionListener(e -> new LoadGameFrame());
 
-
-        final JMenuItem deleteSaves = new JMenuItem("Delete saved games");
         deleteSaves.addActionListener(e -> {
 
             ActionListener deleteAllSaves = e1 -> {
@@ -218,6 +223,7 @@ public class Game implements Serializable, Cloneable {
                 }
 
                 loadGame.setEnabled(false);
+                deleteSaves.setEnabled(false);
 
             };
 
@@ -378,47 +384,56 @@ public class Game implements Serializable, Cloneable {
 
                             } else if (hex != sourceHex) {
 
-                                destinationHex = hex;
-
-                                hexPanel.repaint();
-
-                                System.out.print("\nDestination selected");
-
-                                if (pieceToMove.move(sourceHex.getCell(), destinationHex.getCell())) {
-
+                                if (hex.getCell().isOccupied() && hex.getCell().getPiece().getTeam() ==
+                                        sourceHex.getCell().getPiece().getTeam()) {
                                     sourceHex.setToDefaultColor();
-
-                                    sourceHex.setCell(new Cell.EmptyCell(sourceHex.getCell()));
-                                    destinationHex.setCell(new Cell.OccupiedCell(destinationHex.getCell(), pieceToMove));
-
-                                    System.out.print(" (Legal)\n");
-                                    System.out.println(board);
-                                    System.out.print("Move successful\n");
-
-                                    if (team1.getNumPieces() == 0 || team2.getNumPieces() == 0) {
-                                        winningTeam = hexChex.getCurrentMove();
-                                        System.out.println(winningTeam.getName() + " wins!\n");
-                                        gameEnded = true;
-                                        new EndScreenFrame();
-                                    }
-
-                                    if (hexChex.getCurrentMove() == team1) {
-                                        hexChex.setCurrentMove(team2);
-                                    } else {
-                                        hexChex.setCurrentMove(team1);
-                                    }
-
-                                    sourceHex = null;
-                                    destinationHex = null;
-                                    pieceToMove = null;
-
+                                    sourceHex = hex;
+                                    sourceHex.setToSelectedColor();
+                                    hexPanel.repaint();
                                 } else {
 
-                                    sourceHex = null;
-                                    destinationHex = null;
-                                    pieceToMove = null;
+                                    destinationHex = hex;
 
-                                    System.out.print(" (Illegal)\n");
+                                    hexPanel.repaint();
+
+                                    System.out.print("\nDestination selected");
+
+                                    if (pieceToMove.move(sourceHex.getCell(), destinationHex.getCell())) {
+
+                                        sourceHex.setToDefaultColor();
+
+                                        sourceHex.setCell(new Cell.EmptyCell(sourceHex.getCell()));
+                                        destinationHex.setCell(new Cell.OccupiedCell(destinationHex.getCell(), pieceToMove));
+
+                                        System.out.print(" (Legal)\n");
+                                        System.out.println(board);
+                                        System.out.print("Move successful\n");
+
+                                        if (team1.getNumPieces() == 0 || team2.getNumPieces() == 0) {
+                                            winningTeam = hexChex.getCurrentMove();
+                                            System.out.println(winningTeam.getName() + " wins!\n");
+                                            gameEnded = true;
+                                            new EndScreenFrame();
+                                        }
+
+                                        if (hexChex.getCurrentMove() == team1) {
+                                            hexChex.setCurrentMove(team2);
+                                        } else {
+                                            hexChex.setCurrentMove(team1);
+                                        }
+
+                                        sourceHex = null;
+                                        destinationHex = null;
+                                        pieceToMove = null;
+
+                                    } else {
+
+                                        sourceHex = null;
+                                        destinationHex = null;
+                                        pieceToMove = null;
+
+                                        System.out.print(" (Illegal)\n");
+                                    }
                                 }
                             }
 
@@ -509,7 +524,7 @@ public class Game implements Serializable, Cloneable {
         class ResizeInputPanel extends JPanel {
 
             static final int DIM_MIN = 5;
-            static final int DIM_MAX = 16;
+            static final int DIM_MAX = 15;
             final int WIDTH_INIT = board.getWidth();
             final int HEIGHT_INIT = board.getHeight();
 
@@ -524,6 +539,19 @@ public class Game implements Serializable, Cloneable {
                 add(heightSlider);
                 add(confirmButton);
                 add(cancelButton);
+
+                widthSlider.setPaintTicks(true);
+                widthSlider.setPaintLabels(true);
+                heightSlider.setPaintTicks(true);
+                heightSlider.setPaintLabels(true);
+
+                widthSlider.createStandardLabels(1);
+                heightSlider.createStandardLabels(1);
+
+                widthSlider.setMajorTickSpacing(5);
+                widthSlider.setMinorTickSpacing(1);
+                heightSlider.setMajorTickSpacing(5);
+                heightSlider.setMinorTickSpacing(1);
 
                 cacheGame();
 
@@ -604,13 +632,9 @@ public class Game implements Serializable, Cloneable {
                 });
 
                 startGameButton.addActionListener(e -> {
-                    if (gameEnded) {
-                        NewGameFrame.super.dispose();
-                        gameFrame.dispose();
-                        new Game(new HexChex(new Board(board.getWidth(), board.getHeight()), team1, team2));
-                    } else {
-                        NewGameFrame.super.dispose();
-                    }
+                    NewGameFrame.super.dispose();
+                    gameFrame.dispose();
+                    new Game(new HexChex(new Board(board.getWidth(), board.getHeight()), team1, team2));
                 });
 
                 newDefaultGameButton.addActionListener(e -> {
@@ -754,6 +778,8 @@ public class Game implements Serializable, Cloneable {
                     objOut.close();
 
                     loadGame.setEnabled(true);
+                    deleteSaves.setEnabled(true);
+
 
                     System.out.println("Game saved");
                     gameFrame.setEnabled(true);
@@ -766,7 +792,7 @@ public class Game implements Serializable, Cloneable {
             private SaveGamePanel() {
 
                 JTextField saveNameField = new JTextField();
-                saveNameField.setText("Game" + Objects.requireNonNull(saveDirectory.listFiles()).length);
+                saveNameField.setText("Game(" + Objects.requireNonNull(saveDirectory.listFiles()).length + ")");
                 JButton saveButton = new JButton("Save game");
                 JButton cancelButton = new JButton("Cancel");
 
@@ -974,7 +1000,7 @@ public class Game implements Serializable, Cloneable {
         }
     }
 
-    class NotificationPrompt extends JFrame {
+    private class NotificationPrompt extends JFrame {
 
         private NotificationPrompt(String message) {
 
