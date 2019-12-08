@@ -13,6 +13,15 @@ public class HexChex implements Serializable {
     private Team team1, team2;
     private String gameName = null;
     private Team currentMove;
+    int hexRadius;
+
+    public int getHexRadius() {
+        return hexRadius;
+    }
+
+    public void setHexRadius(int hexRadius) {
+        this.hexRadius = hexRadius;
+    }
 
     public String getGameName() {
         return gameName;

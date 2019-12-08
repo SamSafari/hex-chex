@@ -34,6 +34,7 @@ public class Game implements Serializable, Cloneable {
     private JFrame gameFrame;
     private Point gameFrameCenter;
     private HexPanel hexPanel;
+    private int hexRadius;
 
     private boolean gameEnded = false;
     private Team winningTeam;
@@ -51,8 +52,12 @@ public class Game implements Serializable, Cloneable {
     private Dimension gameFrameDimension;
 
     private Dimension calculateGameFrameDimension() {
-        return new Dimension(board.getWidth() * 70,
-                board.getHeight() * 70 + (3 * 35));
+        return new Dimension(board.getWidth() * ((int)Math.round(hexRadius * 1.7)) + (2 * hexRadius),
+                board.getHeight() * ((int)Math.round(hexRadius * 2.2)) + (2 * hexRadius));
+    }
+
+    private int calculateHexRadius() {
+        return hexRadius = 300 / (int) Math.round(Math.sqrt(board.getWidth() * board.getHeight()));
     }
 
     private void cacheGame() {
@@ -101,6 +106,7 @@ public class Game implements Serializable, Cloneable {
         board = hexChex.getBoard();
         team1 = hexChex.getTeam1();
         team2 = hexChex.getTeam2();
+        hexChex.setHexRadius(calculateHexRadius());
 
         gameFrame = new JFrame("HexChex");
 
@@ -183,7 +189,7 @@ public class Game implements Serializable, Cloneable {
     private final JMenuItem loadGame = new JMenuItem("Load game");
     private final JMenuItem newGame = new JMenuItem("New game");
     private final JMenuItem saveGame = new JMenuItem("Save game");
-    final JMenuItem deleteSaves = new JMenuItem("Delete saved games");
+    private final JMenuItem deleteSaves = new JMenuItem("Delete saved games");
 
 
     private JMenu createFileMenu() {
@@ -192,8 +198,6 @@ public class Game implements Serializable, Cloneable {
         newGame.addActionListener(e -> new NewGameFrame());
 
         saveGame.addActionListener(e -> new SaveGameFrame());
-
-
 
         if (Objects.requireNonNull(saveDirectory.listFiles()).length > 0) {
             loadGame.setEnabled(true);
@@ -251,7 +255,7 @@ public class Game implements Serializable, Cloneable {
         ArrayList<Hexagon> hexList = new ArrayList<>();
 
         private void createHexes() {
-            int hexRadius = 35;
+
             hexList.clear();
 
             for(int row = 0; row < board.getBoard().length; row++) {
@@ -260,7 +264,8 @@ public class Game implements Serializable, Cloneable {
                     if (col % 2 == 0) {
                         if (row % 2 == 0) {
 
-                            Point hexCenter = new Point(col * 55 + (2 * hexRadius), row * 32 + (2 * hexRadius));
+                            Point hexCenter = new Point(col * ((int)Math.round(hexRadius*1.6)) + (2 * hexRadius),
+                                    row * ((int)Math.round(hexRadius*.92)) + (2 * hexRadius));
                             Hexagon hex = new Hexagon(hexCenter, hexRadius, board.getBoard()[row][col]);
                             hex.setDefaultColor(boardColor);
                             hex.setToDefaultColor();
@@ -271,7 +276,8 @@ public class Game implements Serializable, Cloneable {
 
                     } else if (row % 2 != 0) {
 
-                        Point hexCenter = new Point(col * 55 + (2 * hexRadius), row * 32 + (2 * hexRadius));
+                        Point hexCenter = new Point(col * ((int)Math.round(hexRadius*1.6)) + (2 * hexRadius),
+                                row * ((int)Math.round(hexRadius*.92)) + (2 * hexRadius));
                         Hexagon hex = new Hexagon(hexCenter, hexRadius, board.getBoard()[row][col]);
                         hex.setDefaultColor(boardColor);
                         hex.setToDefaultColor();
@@ -279,7 +285,6 @@ public class Game implements Serializable, Cloneable {
                         hexList.add(hex);
 
                     }
-
                 }
             }
         }
@@ -287,7 +292,8 @@ public class Game implements Serializable, Cloneable {
 
         /**
          * Generates a graphical representation of the board with properly tessellated Hexagons, each with its own
-         * Cell object. This method does not need to be actively invoked.
+         * Cell object. If a hexagon's cell is occupied, it will generate a graphical representation of a piece with
+         * its appropriate team color. This method does not need to be actively invoked.
          */
         @Override
         public void paintComponent(Graphics g) {
@@ -297,7 +303,7 @@ public class Game implements Serializable, Cloneable {
         private void paintComponent(Graphics2D g) {
             super.paintComponent(g);
 
-            int pieceRadius = 45;
+            int pieceRadius = hexRadius + 10;
             setBackground(backgroundColor);
 
             for(Hexagon hex : hexList) {
@@ -320,10 +326,8 @@ public class Game implements Serializable, Cloneable {
                     g.setColor(tmpC);
                     g.setStroke(tmpS);
                 }
-
             }
         }
-
     }
 
     private class HexSelector extends MouseAdapter {
@@ -351,7 +355,7 @@ public class Game implements Serializable, Cloneable {
                     if (hex.contains(p)) {
 
                         if (isMiddleMouseButton(e)) {
-                            System.out.println("(" + hex.getCell().col() + ", " + hex.getCell().row() + ")");
+                            System.out.println("(" + hex.getCell().col() + ", " + hex.getCell().row() + ")\n");
                         }
 
                         if (isLeftMouseButton(e)) {
@@ -363,7 +367,7 @@ public class Game implements Serializable, Cloneable {
                                 if (hex.getCell().isOccupied()) {
 
                                     if (hex.getCell().getPiece().getTeam() != hexChex.getCurrentMove()) {
-                                        System.out.println(hexChex.getCurrentMove().getName() + "'s move.");
+                                        System.out.println(hexChex.getCurrentMove().getName() + "'s move.\n");
                                         sourceHex = null;
                                     } else {
                                         pieceToMove = sourceHex.getCell().getPiece();
@@ -382,7 +386,13 @@ public class Game implements Serializable, Cloneable {
                                     System.out.println("No piece on cell\n");
                                 }
 
-                            } else if (hex != sourceHex) {
+                            } else if (hex == sourceHex) {
+                                System.out.println("Source deselected\n");
+
+                                sourceHex.setToDefaultColor();
+                                sourceHex = null;
+                                hexPanel.repaint();
+                            } else {
 
                                 if (hex.getCell().isOccupied() && hex.getCell().getPiece().getTeam() ==
                                         sourceHex.getCell().getPiece().getTeam()) {
@@ -436,7 +446,6 @@ public class Game implements Serializable, Cloneable {
                                     }
                                 }
                             }
-
                         }
 
                         break;
@@ -448,9 +457,7 @@ public class Game implements Serializable, Cloneable {
 
         @Override
         public void mouseEntered(MouseEvent e) {
-
             hexPanel.setCursor(new Cursor(12));
-
         }
     }
 
@@ -482,10 +489,12 @@ public class Game implements Serializable, Cloneable {
 
                 add(winnerLabel);
                 add(rematchButton);
+                add(rematchButton);
                 add(newGameButton);
 
                 rematchButton.addActionListener(e -> {
                     gameFrame.dispose();
+                    EndScreenFrame.super.dispose();
                     new Game(new HexChex(new Board(board.getWidth(), board.getHeight()), team1, team2));
                 });
 
@@ -497,7 +506,6 @@ public class Game implements Serializable, Cloneable {
                 gameFrame.setEnabled(false);
             }
         }
-
     }
 
     private class ResizeBoardFrame extends JFrame {
@@ -525,6 +533,7 @@ public class Game implements Serializable, Cloneable {
 
             static final int DIM_MIN = 5;
             static final int DIM_MAX = 15;
+
             final int WIDTH_INIT = board.getWidth();
             final int HEIGHT_INIT = board.getHeight();
 
@@ -556,25 +565,33 @@ public class Game implements Serializable, Cloneable {
                 cacheGame();
 
                 widthSlider.addChangeListener(e -> {
+
                     board.setWidth(widthSlider.getValue());
+
+                    hexChex.setHexRadius(calculateHexRadius());
+
                     board.setupDefaultBoard(team1, team2);
                     hexPanel.createHexes();
                     hexPanel.repaint();
                     hexChex.setCurrentMove(team1);
 
                     gameFrameDimension = calculateGameFrameDimension();
-                    gameFrame.setSize(calculateGameFrameDimension());
+                    gameFrame.setSize(gameFrameDimension);
                 });
 
                 heightSlider.addChangeListener(e -> {
+
                     board.setHeight(heightSlider.getValue());
+
+                    hexChex.setHexRadius(calculateHexRadius());
+
                     board.setupDefaultBoard(team1, team2);
                     hexPanel.createHexes();
                     hexPanel.repaint();
                     hexChex.setCurrentMove(team1);
 
                     gameFrameDimension = calculateGameFrameDimension();
-                    gameFrame.setSize(calculateGameFrameDimension());
+                    gameFrame.setSize(gameFrameDimension);
                 });
 
                 confirmButton.addActionListener(e -> {
@@ -583,6 +600,7 @@ public class Game implements Serializable, Cloneable {
                 });
 
                 cancelButton.addActionListener(e -> {
+                    ResizeBoardFrame.super.dispose();
                     loadCachedGame();
                 });
 
@@ -817,7 +835,7 @@ public class Game implements Serializable, Cloneable {
                                     file.delete();
                                     createSave(saveNameField.getText());
 
-                                    System.out.println("Game saved!");
+                                    System.out.println("Game saved");
                                     System.out.println(saveNameField.getText() + " has been overwritten!");
 
                                     saveComplete[0] = true;
