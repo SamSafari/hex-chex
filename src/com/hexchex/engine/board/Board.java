@@ -1,6 +1,5 @@
 package com.hexchex.engine.board;
 
-import com.hexchex.engine.pieces.IllegalMoveException;
 import com.hexchex.engine.pieces.Piece;
 import com.hexchex.engine.pieces.Team;
 
@@ -31,28 +30,29 @@ public class Board implements Serializable {
     }
 
     /**
-     * Generates the game board which appears as staggered columns of cells to mimic
-     * a hexagonal cell structure.
+     * Generates the game board which appears as a checkerboard of null spaces and empty cells
+     * which mimics a "double height" hexagonal coordinate system. The real height of the board
+     * is twice the defined height in order to do this.
+     * (More info: https://www.redblobgames.com/grids/hexagons/#coordinates-doubled)
      * @return a staggered board of EmptyCell objects with appropriate row and column values
      */
     private Cell[][] generateBoard() {
 
         board = new Cell[height * 2][width];
-        int cellIDCounter = 0;
 
         for(int row = 0; row < board.length; row++) {
             for(int col = 0; col < board[row].length; col++) {
 
                 if (col % 2 == 0) {
                     if (row % 2 == 0) {
-                        board[row][col] = new Cell.EmptyCell(row, col, cellIDCounter++);
+                        board[row][col] = new Cell.EmptyCell(row, col);
                     } else {
                         board[row][col] = null;
                     }
 
                 } else {
                     if (row % 2 != 0) {
-                        board[row][col] = new Cell.EmptyCell(row, col, cellIDCounter++);
+                        board[row][col] = new Cell.EmptyCell(row, col);
                     } else {
                         board[row][col] = null;
                     }
@@ -79,19 +79,12 @@ public class Board implements Serializable {
     public Cell[][] getBoard() {
         return board;
     }
-    
-    public Object clone() throws CloneNotSupportedException {
-        return super.clone();
-    }
 
-    public Cell findCell(Cell other) throws IllegalMoveException {
-        try {
-            return board[other.row()][other.col()];
-        } catch(NullPointerException e) {
-            throw new IllegalMoveException("That cell doesn't exist!");
-        }
-    }
-
+    /**
+     * Adds a piece to this Board at the specified row and col by setting
+     * board[row][col] to a new OccupiedCell Object. Also adds the piece to
+     * its Team's activePieces List
+     */
     private void addPiece(int row, int col, Piece piece) {
 
         if (board[row][col] != null) {
@@ -100,16 +93,25 @@ public class Board implements Serializable {
                 board[row][col].getPiece().getTeam().removePiece(board[row][col].getPiece());
             }
 
-            board[row][col] = new Cell.OccupiedCell(row, col, board[row][col].getCellID(), piece);
+            board[row][col] = new Cell.OccupiedCell(row, col, piece);
             piece.getTeam().addPiece(piece);
+
+        } else {
+
+            throw new NullCellException("That cell doesn't exist!");
         }
 
     }
 
+    /**
+     * Populates the first two rows on the north and south sides of this Board with new Pieces for each team
+     * @param team1 Team whose pieces start on the north side of the board
+     * @param team2 Team whose pieces start on the south side of the board
+     */
     public void setupDefaultBoard(Team team1, Team team2) {
 
-        team1.clearPieces();
-        team2.clearPieces();
+        team1.clearActivePieces();
+        team2.clearActivePieces();
 
         for (int col = 0; col < width; col++) {
             if (board[0][col] != null) {
@@ -139,21 +141,20 @@ public class Board implements Serializable {
 
     @Override
     public String toString() {
-        String output = "";
-        for (int row = 0; row < board.length; row++) {
-            for (int col = 0; col < board[row].length; col++) {
+        StringBuilder output = new StringBuilder();
+        for(Cell[] cells : board) {
+            for(Cell cell : cells) {
 
-                if (board[row][col] == null) {
-                    output += "   ";
+                if (cell == null) {
+                    output.append("   ");
                 } else {
-                    output += board[row][col];
+                    output.append(cell);
                 }
 
             }
-            output += "\n";
+            output.append("\n");
         }
-        return output;
+        return output.toString();
     }
-
 
 }

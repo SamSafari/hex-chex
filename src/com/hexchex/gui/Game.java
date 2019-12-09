@@ -15,11 +15,13 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Hashtable;
 import java.util.Objects;
 
 import static javax.swing.SwingUtilities.*;
 
+/**
+ * Creates the graphical representation of a HexChex Object and handles the game logic
+ */
 public class Game implements Serializable, Cloneable {
 
     private static final long serialVersionUID = 12345L;
@@ -60,6 +62,9 @@ public class Game implements Serializable, Cloneable {
         return hexRadius = 300 / (int) Math.round(Math.sqrt(board.getWidth() * board.getHeight()));
     }
 
+    /**
+     * Creates a temporary save of the current Game by cloning and serializing it to a file in cacheDirectory
+     */
     private void cacheGame() {
         try {
             Game save = (Game) instance.clone();
@@ -77,6 +82,9 @@ public class Game implements Serializable, Cloneable {
         }
     }
 
+    /**
+     * Replaces the current Game with the one stored in cacheDirectory
+     */
     private void loadCachedGame() {
         try {
             FileInputStream fileIn = new FileInputStream(cacheDirectory.getPath() + "\\temp");
@@ -142,13 +150,12 @@ public class Game implements Serializable, Cloneable {
                         destinationHex = null;
                         pieceToMove = null;
 
-                        System.out.println("Cancelled");
+                        System.out.println("Cancelled\n");
 
                         hexPanel.repaint();
                     }
                 }
             }
-
         });
 
         gameFrame.add(hexPanel);
@@ -185,12 +192,10 @@ public class Game implements Serializable, Cloneable {
         return editMenu;
     }
 
-
     private final JMenuItem loadGame = new JMenuItem("Load game");
     private final JMenuItem newGame = new JMenuItem("New game");
     private final JMenuItem saveGame = new JMenuItem("Save game");
     private final JMenuItem deleteSaves = new JMenuItem("Delete saved games");
-
 
     private JMenu createFileMenu() {
         final JMenu fileMenu = new JMenu("File");
@@ -250,10 +255,16 @@ public class Game implements Serializable, Cloneable {
 
         private HexPanel() {
             createHexes();
+            setCursor(new Cursor(Cursor.HAND_CURSOR));
         }
 
         ArrayList<Hexagon> hexList = new ArrayList<>();
 
+        /**
+         * Populates hexList with Hexagon objects with proper color, locations and radii to tessellate,
+         * and assigns them with the appropriate Cell object they represent. Will old values of hexList every time
+         * it's called.
+         */
         private void createHexes() {
 
             hexList.clear();
@@ -289,11 +300,11 @@ public class Game implements Serializable, Cloneable {
             }
         }
 
-
         /**
          * Generates a graphical representation of the board with properly tessellated Hexagons, each with its own
          * Cell object. If a hexagon's cell is occupied, it will generate a graphical representation of a piece with
-         * its appropriate team color. This method does not need to be actively invoked.
+         * its appropriate team color. This method does not need to be actively invoked. Uses Graphics2D to allow for
+         * Strokes to be applied to components.
          */
         @Override
         public void paintComponent(Graphics g) {
@@ -314,6 +325,7 @@ public class Game implements Serializable, Cloneable {
                 if (hex.getCell().isOccupied()) {
                     Color tmpC = g.getColor();
                     Stroke tmpS = g.getStroke();
+                    Font tmpF = g.getFont();
 
                     Color color = hex.getCell().getPiece().getTeam().getColor();
                     g.setColor(color);
@@ -323,10 +335,27 @@ public class Game implements Serializable, Cloneable {
                     g.setColor(Color.BLACK);
                     g.drawOval(hex.getCenter().x - (pieceRadius / 2), hex.getCenter().y - (pieceRadius / 2), pieceRadius, pieceRadius);
 
+                    String abbr = hex.getCell().getPiece().getTeam().getAbbr().toString();
+                    
+                    double luminance = getLuminance(color);
+                    double threshold = getLuminance(new Color(55, 55, 55));
+
+                    if (luminance < threshold) {
+                        g.setColor(Color.WHITE);
+                    }
+
+                    int abbrAlignment = (hex.getCenter().x - g.getFontMetrics().stringWidth(abbr)/2);
+                    g.drawString(abbr, abbrAlignment, hex.getCenter().y + pieceRadius/8);
+
                     g.setColor(tmpC);
                     g.setStroke(tmpS);
+                    g.setFont(tmpF);
                 }
             }
+        }
+
+        private double getLuminance(Color color) {
+            return 0.2126 * color.getRed() + 0.7152 * color.getGreen() + 0.0722 * color.getBlue();
         }
     }
 
@@ -341,7 +370,6 @@ public class Game implements Serializable, Cloneable {
         /**
          * Moves the piece on a selected Hexagon (LClick 1) to another selected Hexagon (LClick 2),
          * or cancels all selections (RClick). Will update the graphical representation of the board when complete.
-         *
          * @param e User mouse click input
          */
         @Override
@@ -408,7 +436,7 @@ public class Game implements Serializable, Cloneable {
 
                                     System.out.print("\nDestination selected");
 
-                                    if (pieceToMove.move(sourceHex.getCell(), destinationHex.getCell())) {
+                                    if (pieceToMove.move(destinationHex.getCell())) {
 
                                         sourceHex.setToDefaultColor();
 
@@ -417,9 +445,9 @@ public class Game implements Serializable, Cloneable {
 
                                         System.out.print(" (Legal)\n");
                                         System.out.println(board);
-                                        System.out.print("Move successful\n");
+                                        System.out.println("Move successful\n");
 
-                                        if (team1.getNumPieces() == 0 || team2.getNumPieces() == 0) {
+                                        if (team1.getNumActivePieces() == 0 || team2.getNumActivePieces() == 0) {
                                             winningTeam = hexChex.getCurrentMove();
                                             System.out.println(winningTeam.getName() + " wins!\n");
                                             gameEnded = true;
@@ -453,11 +481,6 @@ public class Game implements Serializable, Cloneable {
                     }
                 }
             }
-        }
-
-        @Override
-        public void mouseEntered(MouseEvent e) {
-            hexPanel.setCursor(new Cursor(12));
         }
     }
 
@@ -709,6 +732,7 @@ public class Game implements Serializable, Cloneable {
                 team1.setName(team1Panel.teamNameField.getText());
                 team2.setName(team2Panel.teamNameField.getText());
                 gameFrame.setEnabled(true);
+                hexPanel.repaint();
                 dispose();
             });
 

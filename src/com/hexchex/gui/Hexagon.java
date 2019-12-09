@@ -19,7 +19,7 @@ public class Hexagon extends Polygon {
 
     private Cell cell;
 
-    public Hexagon(Point center, int radius, Cell cell) {
+    Hexagon(Point center, int radius, Cell cell) {
         npoints = SIDES;
         xpoints = new int[SIDES];
         ypoints = new int[SIDES];
@@ -39,72 +39,84 @@ public class Hexagon extends Polygon {
         this.color = color;
     }
 
-    public Color getColor() {
+    Color getColor() {
         return color;
     }
 
-    public void setDefaultColor(Color color) {
+    void setDefaultColor(Color color) {
         this.defaultColor = color;
     }
 
-    public Color getDefaultColor() {
+    Color getDefaultColor() {
         return defaultColor;
     }
 
-    public void setToDefaultColor() {
+    void setToDefaultColor() {
         color = defaultColor;
     }
 
-    public void setToSelectedColor() {
+    void setToSelectedColor() {
         color = selectedColor;
     }
 
-    public void setCell(Cell cell) {
+    void setCell(Cell cell) {
         this.cell = cell;
     }
 
-    public int getRadius() {
+    int getRadius() {
         return radius;
     }
 
-    public void setRadius(int radius) {
+    void setRadius(int radius) {
         this.radius = radius;
 
         updatePoints();
     }
 
-    public int getRotation() {
+    int getRotation() {
         return rotation;
     }
 
-    public void setRotation(int rotation) {
+    void setRotation(int rotation) {
         this.rotation = rotation;
 
         updatePoints();
     }
 
-    public Point getCenter() {
+    Point getCenter() {
         return center;
     }
 
-    public void setCenter(Point center) {
+    private void setCenter(Point center) {
         this.center = center;
 
         updatePoints();
     }
 
-    public void setCenter(int x, int y) {
+    private void setCenter(int x, int y) {
         setCenter(new Point(x, y));
     }
 
-    public Cell getCell() {
+    Cell getCell() {
         return cell;
     }
 
+    /**
+     * Calculates an interior angle, in radians, of the Hexagon based on a fraction (between 0 and 1) representing
+     * the angle being calculated
+     * @param fraction a double between 0 and 1 which denotes the angle to be calculated--will be one of six values
+     *                 for the six angles of a hexagon (see updatePoints() method)
+     * @return an interior angle of this Hexagon, in radians
+     */
     private double findAngle(double fraction) {
         return fraction * Math.PI * 2 + Math.toRadians((rotation + 180) % 360);
     }
 
+    /**
+     * Finds a vertex of the Hexagon based on an interior angle
+     * @param angle the interior angle being used to find the vertex
+     * @return a Point with the coordinates of the vertex
+     */
     private Point findPoint(double angle) {
         int x = (int) (center.x + Math.cos(angle) * radius);
         int y = (int) (center.y + Math.sin(angle) * radius);
@@ -112,6 +124,10 @@ public class Hexagon extends Polygon {
         return new Point(x, y);
     }
 
+    /**
+     * Recalculates the angles and vertices of this Hexagon. Called when the radius or
+     * rotation of this Hexagon is changed
+     */
     private void updatePoints() {
         for (int p = 0; p < SIDES; p++) {
             double angle = findAngle((double) p / SIDES);

@@ -4,9 +4,11 @@ import com.hexchex.engine.board.*;
 
 import java.io.Serializable;
 
+/**
+ * Piece Objects have a Cell they occupy, a Team they represent, and a Board they play on
+ */
 public class Piece implements Serializable {
 
-    private int row, col;
     private Cell position;
     private final Team team;
     private final Board board;
@@ -15,7 +17,6 @@ public class Piece implements Serializable {
         this.position = position;
         this.team = team;
         this.board = board;
-
     }
 
     public Piece(int row, int col, Team team, Board board) {
@@ -28,14 +29,6 @@ public class Piece implements Serializable {
         return this.team;
     }
 
-    public int getRow() {
-        return row;
-    }
-
-    public int getCol() {
-        return col;
-    }
-
     public Cell getPosition() {
         return position;
     }
@@ -44,51 +37,14 @@ public class Piece implements Serializable {
         this.position = position;
     }
 
-    private void setRow(int row) {
-        this.row = row;
-    }
-
-    private void setCol(int col) {
-        this.col = col;
-    }
-
     /**
-     * Moves a piece one space in the specified direction on the specified board. Will replace enemy pieces moved onto
-     * with the piece being moved.
-     * @throws IllegalMoveException if the Cell in the specified direction is an invalid place to move (i.e. it is off
-     *                              the board or occupied by a piece of the same team)
+     * Moves this piece from its current cell to another cell.
+     * @param endCell cell moving to
+     * @return true if the move is successful, false otherwise
      */
-    public void move(Direction d) throws IllegalMoveException {
-
-        Cell startCell = board.findCell(position);
-        Cell endCell = board.findCell(d.findNewCell(startCell));
-
-        if (board.getBoard()[endCell.row()][endCell.col()] == null) {
-
-            throw new IllegalMoveException("You cannot move that direction!");
-
-        } else if (!endCell.isOccupied()) {
-
-            executeMove(startCell, endCell);
-
-        } else if (endCell.getPiece().getTeam() == team) {
-
-                throw new IllegalMoveException("You cannot move to a cell occupied by one of your pieces!");
-
-        } else {
-
-            assert endCell.getPiece().getTeam() != team;
-            endCell.getPiece().getTeam().removePiece(endCell.getPiece());
-
-            executeMove(startCell, endCell);
-
-        }
-
-    }
-
-    public boolean move(Cell startCell, Cell endCell) {
-        if(validateMove(startCell, endCell)) {
-            executeMove(startCell, endCell);
+    public boolean move(Cell endCell) {
+        if(validateMove(endCell)) {
+            executeMove(endCell);
             return true;
         } else {
             return false;
@@ -96,44 +52,41 @@ public class Piece implements Serializable {
     }
 
     /**
-     * Helper method to move a piece from one cell to another and change the states of the Cell objects from
+     * Helper method to move this piece from its current cell to another, changing the states of the Cell objects from
      * EmptyCell to OccupiedCell, and vice versa.
-     * @param startCell the original cell the piece is moving from (will be converted to an EmptyCell)
      * @param endCell the new cell the piece is moving to (will be converted to an OccupiedCell regardless of whether
      *                it was before)
      */
-    private void executeMove(Cell startCell, Cell endCell) {
-
-        int oldCellID = position.getCellID();
+    private void executeMove(Cell endCell) {
 
         if (endCell.isOccupied()) {
             endCell.getPiece().getTeam().removePiece(endCell.getPiece());
         }
 
+        endCell = new Cell.OccupiedCell(endCell.row(), endCell.col(), this);
+
+        board.getBoard()[position.row()][position.col()]
+                = new Cell.EmptyCell(position.row(), position.col());
         setPosition(endCell);
-
-        startCell = new Cell.EmptyCell(startCell.row(), startCell.col(), oldCellID);
-        endCell = new Cell.OccupiedCell(endCell.row(), endCell.col(), endCell.getCellID(),this);
-
-        board.getBoard()[startCell.row()][startCell.col()] = startCell;
         board.getBoard()[endCell.row()][endCell.col()] = endCell;
 
     }
 
     /**
-     * Checks whether a move between any two (possibly non-adjacent) cells is legal.
-     * @param startCell cell moving from
+     * Checks whether a move between this piece's current position and any
+     * other (possibly non-adjacent) cell is legal.
      * @param endCell cell moving to
-     * @return true if the move is legal, IllegalMoveException() otherwise
+     * @return true if the move is legal, IllegalMoveException() if endCell is occupied by this
+     * piece's team, and NullCellException() if endCell is off the board.
      */
-    private boolean validateMove(Cell startCell, Cell endCell) {
+    private boolean validateMove(Cell endCell) {
 
         if (!endCell.isOccupied() || endCell.getPiece().getTeam() != team) {
 
             int numValidDirections = 0;
             for(Direction d : Direction.values()) {
-                if (endCell.row() == d.findNewCell(startCell).row()
-                 && endCell.col() == d.findNewCell(startCell).col()) {
+                if (endCell.row() == d.findNewCell(position).row()
+                 && endCell.col() == d.findNewCell(position).col()) {
                     numValidDirections++;
                 }
             }

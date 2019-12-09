@@ -6,40 +6,59 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Have a List of activePieces (pieces currently in play), as well as a name and color
+ * which determines the color of their pieces in the GUI
+ */
 public class Team implements Serializable {
 
-    private List<Piece> pieces;
-    private int numPieces;
+    private List<Piece> activePieces;
+    private int numActivePieces;
     private String name;
     private Color color;
+    private Character abbr;
 
     public Team(String name, Color color) {
         this.color = color;
-        this.pieces = new ArrayList<>();
-        this.numPieces = 0;
+        this.activePieces = new ArrayList<>();
+        this.numActivePieces = 0;
         this.name = name;
+        abbr = name.charAt(0);
     }
 
     public void addPiece(Piece piece) {
-        pieces.add(piece);
-        numPieces++;
+        activePieces.add(piece);
+        numActivePieces++;
     }
 
     public void removePiece(Piece piece) {
-        pieces.remove(piece);
-        numPieces--;
+        activePieces.remove(piece);
+        numActivePieces--;
     }
 
-    public List<Piece> getPieces() {
-        return Collections.unmodifiableList(pieces);
+    public void clearActivePieces() {
+        activePieces.clear();
+        numActivePieces = 0;
     }
 
-    public char getAbbr() {
-        return name.charAt(0);
+    public List<Piece> getActivePieces() {
+        return Collections.unmodifiableList(activePieces);
+    }
+
+    public Character getAbbr() {
+        return abbr;
+    }
+
+    public void setAbbr(String abbr) {
+        this.abbr = abbr.charAt(0);
     }
 
     public String getName() {
         return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public Color getColor() {
@@ -50,16 +69,8 @@ public class Team implements Serializable {
         this.color = color;
     }
 
-    public int getNumPieces() {
-        return numPieces;
+    public int getNumActivePieces() {
+        return numActivePieces;
     }
 
-    public void clearPieces() {
-        pieces.clear();
-        numPieces = 0;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
 }
